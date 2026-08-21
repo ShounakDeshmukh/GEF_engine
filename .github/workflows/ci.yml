@@ -27,7 +27,7 @@ jobs:
             libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
             libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev \
             libthai-dev libusb-1.0-0-dev libpipewire-0.3-dev libwayland-dev \
-            libdecor-0-dev liburing-dev
+            libdecor-0-dev liburing-dev ccache
 
           curl -fsSL -o /tmp/cmake.tar.gz \
             "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
