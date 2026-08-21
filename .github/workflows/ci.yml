@@ -36,7 +36,7 @@ jobs:
 
           curl -fsSL -o /tmp/ninja.zip \
             "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
-          sudo unzip -q /tmp/ninja.zip -d /usr/local/bin
+          sudo unzip -oq /tmp/ninja.zip -d /usr/local/bin
           sudo chmod +x /usr/local/bin/ninja
 
       - name: Configure, build, and test
