@@ -58,3 +58,13 @@ if(CLANG_FORMAT_EXE)
         VERBATIM
     )
 endif()
+
+find_program(DOXYGEN_EXE NAMES doxygen)
+if(DOXYGEN_EXE)
+    add_custom_target(docs
+        COMMAND ${DOXYGEN_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating API documentation with Doxygen"
+        VERBATIM
+    )
+endif()

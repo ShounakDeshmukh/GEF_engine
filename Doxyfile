@@ -1,0 +1,24 @@
+# Doxygen configuration for the engine public API reference.
+# Generate with: cmake --build --preset linux-debug --target docs
+# Only tags that differ from Doxygen's built-in defaults are listed here.
+
+PROJECT_NAME            = "Deadlock Engine"
+PROJECT_BRIEF           = "2D game engine"
+OUTPUT_DIRECTORY        = docs
+
+INPUT                   = include README.md
+RECURSIVE               = YES
+FILE_PATTERNS           = *.hpp
+USE_MDFILE_AS_MAINPAGE  = README.md
+STRIP_FROM_PATH         = include
+
+EXTRACT_ALL             = YES
+EXTRACT_PRIVATE         = NO
+JAVADOC_AUTOBRIEF       = YES
+
+GENERATE_LATEX          = NO
+GENERATE_TREEVIEW       = YES
+
+# Deterministic output regardless of which OS builds the docs (filesystem
+# case-sensitivity otherwise varies between Linux and Windows/macOS).
+CASE_SENSE_NAMES        = NO
