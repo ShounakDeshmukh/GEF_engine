@@ -9,8 +9,10 @@ namespace engine {
 
 class Renderer;
 
+/** Owns an OS window backed by SDL. */
 class Window {
 public:
+    /** Opens a window of the given size with the given title. */
     Window(const std::string& title, int width, int height);
     ~Window();
 
@@ -19,14 +21,17 @@ public:
     Window(Window&&) noexcept;
     Window& operator=(Window&&) noexcept;
 
+    /** Width in pixels. */
     int width() const noexcept;
+    /** Height in pixels. */
     int height() const noexcept;
+    /** Window title. */
     const std::string& title() const noexcept;
 
-    // Pumps the OS event queue once. Call before checking shouldClose().
+    /** Pumps the OS event queue once. Call before checking shouldClose(). */
     void pollEvents();
 
-    // True once the user has requested this window be closed.
+    /** True once the user has requested this window be closed. */
     bool shouldClose() const noexcept;
 
 private:
