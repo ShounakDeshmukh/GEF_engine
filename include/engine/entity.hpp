@@ -24,7 +24,7 @@ struct Transform {
 struct RigidBody {
     glm::vec2 velocity{0.f, 0.f};
     std::optional<float> gravity; // nullopt = unaffected; present = gravity
-                                   // accel for this entity (px/s^2)
+                                  // accel for this entity (px/s^2)
 };
 
 /** Axis-aligned collision extents. */
@@ -37,6 +37,7 @@ struct Shape {
     glm::vec2 size{32.f, 32.f};
     Color color;
     std::optional<TextureId> texture; // nullopt = solid color; present = textured
+    bool tiled = false;               // true = repeat texture across size instead of stretching
 };
 
 /** Owns every entity and its components. All access goes through a method

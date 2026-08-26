@@ -52,10 +52,14 @@ TextureId Renderer::loadTexture(const std::string& path) {
     return static_cast<TextureId>(textures_.size() - 1);
 }
 
-void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size) {
+void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled) {
     SDL_Texture* handle = textures_.at(texture).get();
     const SDL_FRect rect{position.x, position.y, size.x, size.y};
-    SDL_RenderTexture(renderer_.get(), handle, nullptr, &rect);
+    if (tiled) {
+        SDL_RenderTextureTiled(renderer_.get(), handle, nullptr, 1.f, &rect);
+    } else {
+        SDL_RenderTexture(renderer_.get(), handle, nullptr, &rect);
+    }
 }
 
 void Renderer::drawEntities(const World& world) {
@@ -63,7 +67,7 @@ void Renderer::drawEntities(const World& world) {
         const Transform& transform = world.transform(id);
         const glm::vec2 size = shape.size * transform.scale;
         if (shape.texture) {
-            drawTexture(*shape.texture, transform.position, size);
+            drawTexture(*shape.texture, transform.position, size, shape.tiled);
         } else {
             fillRect(transform.position, size, shape.color);
         }

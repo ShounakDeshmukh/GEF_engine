@@ -45,9 +45,10 @@ public:
     /** Loads an image file into a GPU texture and returns its id. Throws
      *  std::runtime_error if the file can't be loaded. */
     TextureId loadTexture(const std::string& path);
-    /** Draws a texture at position (top-left corner), scaled to size.
-     *  Throws std::out_of_range if texture is not a valid id. */
-    void drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size);
+    /** Draws a texture at position (top-left corner). Stretched to fill
+     *  size, or tiled across it if tiled is true. Throws std::out_of_range
+     *  if texture is not a valid id. */
+    void drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled = false);
     /** Draws every entity that has a Shape, positioned and scaled by its
      *  Transform. Uses the shape's texture if it has one, otherwise its
      *  color. */
