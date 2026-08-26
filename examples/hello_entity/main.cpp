@@ -1,6 +1,8 @@
+#include <SDL3/SDL.h>
 #include <chrono>
 #include <cmath>
 #include <engine/engine.hpp>
+#include <string>
 
 int main() {
     engine::log::init();
@@ -8,6 +10,9 @@ int main() {
 
     engine::Window window("hello_entity", 1920, 1080);
     engine::Renderer renderer(window);
+
+    const std::string texturePath = std::string(SDL_GetBasePath()) + "assets/texture.png";
+    const engine::TextureId circleTexture = renderer.loadTexture(texturePath);
 
     engine::World world;
 
@@ -18,6 +23,10 @@ int main() {
     const engine::EntityId ground = world.create();
     world.transform(ground).position = {0.f, 1000.f};
     world.addShape(ground, {.size = {1920.f, 80.f}, .color = {0, 255, 0, 255}});
+
+    const engine::EntityId textured = world.create();
+    world.transform(textured).position = {944.f, 300.f};
+    world.addShape(textured, {.size = {64.f, 64.f}, .texture = circleTexture});
 
     const auto start = std::chrono::steady_clock::now();
 

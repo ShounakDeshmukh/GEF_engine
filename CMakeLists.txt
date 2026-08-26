@@ -29,6 +29,7 @@ target_link_libraries(engine
         glm::glm
     PRIVATE
         SDL3::SDL3
+        SDL3_image::SDL3_image
         spdlog::spdlog
 )
 

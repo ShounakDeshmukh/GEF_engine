@@ -4,12 +4,17 @@
 #include "engine/window.hpp"
 
 #include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
 #include <stdexcept>
 
 namespace engine {
 
 void Renderer::Deleter::operator()(SDL_Renderer* renderer) const noexcept {
     SDL_DestroyRenderer(renderer);
+}
+
+void Renderer::TextureDeleter::operator()(SDL_Texture* texture) const noexcept {
+    SDL_DestroyTexture(texture);
 }
 
 Renderer::Renderer(Window& window) : renderer_(SDL_CreateRenderer(window.nativeHandle(), nullptr)) {
@@ -33,10 +38,35 @@ void Renderer::fillRect(glm::vec2 position, glm::vec2 size, Color color) {
     SDL_RenderFillRect(renderer_.get(), &rect);
 }
 
+TextureId Renderer::loadTexture(const std::string& path) {
+    SDL_Surface* surface = IMG_Load(path.c_str());
+    if (!surface) {
+        throw std::runtime_error(SDL_GetError());
+    }
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_.get(), surface);
+    SDL_DestroySurface(surface);
+    if (!texture) {
+        throw std::runtime_error(SDL_GetError());
+    }
+    textures_.emplace_back(texture);
+    return static_cast<TextureId>(textures_.size() - 1);
+}
+
+void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size) {
+    SDL_Texture* handle = textures_.at(texture).get();
+    const SDL_FRect rect{position.x, position.y, size.x, size.y};
+    SDL_RenderTexture(renderer_.get(), handle, nullptr, &rect);
+}
+
 void Renderer::drawEntities(const World& world) {
     for (const auto& [id, shape] : world.shapes()) {
         const Transform& transform = world.transform(id);
-        fillRect(transform.position, shape.size * transform.scale, shape.color);
+        const glm::vec2 size = shape.size * transform.scale;
+        if (shape.texture) {
+            drawTexture(*shape.texture, transform.position, size);
+        } else {
+            fillRect(transform.position, size, shape.color);
+        }
     }
 }
 

@@ -32,10 +32,11 @@ struct Collider {
     glm::vec2 size{0.f, 0.f};
 };
 
-/** Visual size and color used when rendering an entity. */
+/** Visual size, color, and optional texture used when rendering an entity. */
 struct Shape {
     glm::vec2 size{32.f, 32.f};
     Color color;
+    std::optional<TextureId> texture; // nullopt = solid color; present = textured
 };
 
 /** Owns every entity and its components. All access goes through a method

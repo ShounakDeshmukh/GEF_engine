@@ -1,7 +1,10 @@
 include(FetchContent)
+
 set(FETCHCONTENT_QUIET OFF)
 
-# --- SDL3 --------------------------------------------------------------
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+# SDL3
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -17,9 +20,7 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 
-# --- spdlog --------------------------------------------------------------
-# SPDLOG_FMT_EXTERNAL stays OFF: spdlog bundles fmt privately, so fmt never
-# becomes a separate dependency or appears on engine's public API.
+# spdlog
 set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE_HO OFF CACHE BOOL "" FORCE)
@@ -38,9 +39,7 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 
-# --- glm --------------------------------------------------------------
-# GLM_BUILD_LIBRARY defaults ON upstream (would compile a small static lib);
-# force OFF to keep glm a pure header-only INTERFACE target.
+# GLM
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
@@ -54,7 +53,7 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 
-# --- nlohmann/json --------------------------------------------------------------
+# nlohmann/json
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 
@@ -67,11 +66,36 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailable(SDL3 spdlog glm nlohmann_json)
+FetchContent_MakeAvailable(
+    SDL3
+    spdlog
+    glm
+    nlohmann_json
+)
 
-# --- Catch2 --------------------------------------------------------------
-# Test-only; only fetched when tests are enabled so an ENGINE_BUILD_TESTS=OFF
-# configure never clones it.
+# SDL3_image
+set(SDLIMAGE_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_SAMPLES OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_TESTS OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_VENDORED OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_BACKEND_STB ON CACHE BOOL "" FORCE)
+set(SDLIMAGE_BACKEND_IMAGEIO OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_AVIF OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_WEBP OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_TIF OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SDL3_image
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+    GIT_TAG release-3.2.4
+    GIT_SHALLOW TRUE
+    SYSTEM
+    EXCLUDE_FROM_ALL
+)
+
+FetchContent_MakeAvailable(SDL3_image)
+
+# Catch2
 if(ENGINE_BUILD_TESTS)
     set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
     set(CATCH_INSTALL_EXTRAS OFF CACHE BOOL "" FORCE)
