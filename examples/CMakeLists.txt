@@ -1,2 +1,8 @@
 add_executable(hello_window hello_window/main.cpp)
 target_link_libraries(hello_window PRIVATE engine)
+
+add_executable(hello_entity hello_entity/main.cpp)
+target_link_libraries(hello_entity PRIVATE engine)
+target_compile_definitions(hello_entity PRIVATE
+    HELLO_ENTITY_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/hello_entity/assets/"
+)

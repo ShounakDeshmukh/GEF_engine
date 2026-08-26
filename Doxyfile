@@ -22,3 +22,7 @@ GENERATE_TREEVIEW       = YES
 # Deterministic output regardless of which OS builds the docs (filesystem
 # case-sensitivity otherwise varies between Linux and Windows/macOS).
 CASE_SENSE_NAMES        = NO
+
+# Documents which thread(s) may call an API, ahead of the engine's move to
+# multithreading.
+ALIASES                 = thread_safety="@par Thread-safety:"

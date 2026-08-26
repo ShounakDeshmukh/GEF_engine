@@ -14,6 +14,7 @@ add_library(engine STATIC
     src/window.cpp
     src/renderer.cpp
     src/log.cpp
+    src/entity.cpp
 )
 
 target_include_directories(engine
@@ -28,6 +29,7 @@ target_link_libraries(engine
         glm::glm
     PRIVATE
         SDL3::SDL3
+        SDL3_image::SDL3_image
         spdlog::spdlog
 )
 
