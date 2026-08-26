@@ -93,6 +93,18 @@ cmake --build --preset linux-debug --target format
 Reformats every `.hpp`/`.cpp` under `include/`, `src/`, `examples/`, `tests/` with
 `clang-format` in place.
 
+## Documentation
+
+Requires [Doxygen](https://www.doxygen.nl/):
+
+```sh
+sudo apt-get install -y doxygen
+cmake --build --preset linux-debug --target docs
+```
+
+Generates the public API reference from `include/` into `docs/html/index.html`
+(gitignored, regenerated on demand — not committed).
+
 ## Rule for consuming repos
 
 Only `include/engine/` is a stable public contract. `src/`, `cmake/`, and internal
