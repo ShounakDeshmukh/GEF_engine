@@ -14,6 +14,7 @@ add_library(engine STATIC
     src/window.cpp
     src/renderer.cpp
     src/log.cpp
+    src/entity.cpp
 )
 
 target_include_directories(engine
