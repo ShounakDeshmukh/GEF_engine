@@ -1,4 +1,4 @@
-# engine
+# Deadlock engine
 
 A C++20 game engine built on SDL3, shared across the team as a linkable
 static library. Games live in separate consuming repos (e.g. `game-template`) that
@@ -108,4 +108,4 @@ Generates the public API reference from `include/` into `docs/html/index.html`
 ## Rule for consuming repos
 
 Only `include/engine/` is a stable public contract. `src/`, `cmake/`, and internal
-target names may change without notice — consuming repos must never `#include` anything outside `include/engine/`.
+target names may change without notice consuming repos must never `#include` anything outside `include/engine/`.
