@@ -1,4 +1,3 @@
-#include <SDL3/SDL.h>
 #include <chrono>
 #include <cmath>
 #include <engine/engine.hpp>
@@ -11,9 +10,9 @@ int main() {
     engine::Window window("hello_entity", 1920, 1080);
     engine::Renderer renderer(window);
 
-    const std::string basePath = SDL_GetBasePath();
-    const engine::TextureId circleTexture = renderer.loadTexture(basePath + "assets/texture.png");
-    const engine::TextureId checkerTexture = renderer.loadTexture(basePath + "assets/checker.png");
+    const std::string assetDir = HELLO_ENTITY_ASSET_DIR;
+    const engine::TextureId circleTexture = renderer.loadTexture(assetDir + "texture.png");
+    const engine::TextureId checkerTexture = renderer.loadTexture(assetDir + "checker.png");
 
     engine::World world;
 
