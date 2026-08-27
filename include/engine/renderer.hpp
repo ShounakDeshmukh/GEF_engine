@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <glm/vec2.hpp>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,29 @@ struct Color {
 /** Handle to a texture loaded by Renderer::loadTexture. */
 using TextureId = std::uint32_t;
 
+/** A sub-region within a texture. origin is the top-left corner, in pixel
+ *  coordinates. */
+struct Rect {
+    glm::vec2 origin{0.f, 0.f};
+    glm::vec2 size{0.f, 0.f};
+};
+
+/** Handle to a sprite sheet layout created by Renderer::createSpriteSheet. */
+using SpriteSheetId = std::uint32_t;
+
+/** The set of frame rects within a sprite sheet texture. */
+struct SpriteSheetLayout {
+    std::vector<Rect> frames;
+
+    /** Builds a layout from a uniform grid of frameSize cells, columns wide
+     *  and rows tall, starting at offset with spacing between cells.
+     *  frameCount truncates the result to fewer than columns * rows frames,
+     *  for a sheet whose last row isn't fully filled. */
+    static SpriteSheetLayout grid(glm::vec2 frameSize, int columns, int rows = 1,
+                                  std::optional<int> frameCount = std::nullopt,
+                                  glm::vec2 offset = {0.f, 0.f}, glm::vec2 spacing = {0.f, 0.f});
+};
+
 /** Draws into a Window using SDL's hardware-accelerated renderer. */
 class Renderer {
 public:
@@ -45,10 +69,15 @@ public:
     /** Loads an image file into a GPU texture and returns its id. Throws
      *  std::runtime_error if the file can't be loaded. */
     TextureId loadTexture(const std::string& path);
+    /** Registers a sprite sheet layout for texture and returns its id.
+     *  Throws std::out_of_range if texture is not a valid id. */
+    SpriteSheetId createSpriteSheet(TextureId texture, SpriteSheetLayout layout);
     /** Draws a texture at position (top-left corner). Stretched to fill
-     *  size, or tiled across it if tiled is true. Throws std::out_of_range
-     *  if texture is not a valid id. */
-    void drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled = false);
+     *  size, or tiled across it if tiled is true. sourceRect, if set,
+     *  draws only that sub-region of the texture instead of the whole
+     *  thing. Throws std::out_of_range if texture is not a valid id. */
+    void drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled = false,
+                     std::optional<Rect> sourceRect = std::nullopt);
     /** Draws every entity that has a Shape, positioned and scaled by its
      *  Transform. Uses the shape's texture if it has one, otherwise its
      *  color. */
@@ -63,9 +92,14 @@ private:
     struct TextureDeleter {
         void operator()(SDL_Texture*) const noexcept;
     };
+    struct SpriteSheetData {
+        TextureId texture;
+        std::vector<Rect> frames;
+    };
 
     std::unique_ptr<SDL_Renderer, Deleter> renderer_;
     std::vector<std::unique_ptr<SDL_Texture, TextureDeleter>> textures_;
+    std::vector<SpriteSheetData> spriteSheets_;
 };
 
 } // namespace engine

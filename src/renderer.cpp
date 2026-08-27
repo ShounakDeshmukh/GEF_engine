@@ -6,8 +6,22 @@
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 #include <stdexcept>
+#include <utility>
 
 namespace engine {
+
+SpriteSheetLayout SpriteSheetLayout::grid(glm::vec2 frameSize, int columns, int rows,
+                                          std::optional<int> frameCount, glm::vec2 offset,
+                                          glm::vec2 spacing) {
+    SpriteSheetLayout layout;
+    const int total = frameCount.value_or(columns * rows);
+    layout.frames.reserve(static_cast<std::size_t>(total));
+    for (int i = 0; i < total; ++i) {
+        const glm::vec2 cell{static_cast<float>(i % columns), static_cast<float>(i / columns)};
+        layout.frames.push_back({offset + cell * (frameSize + spacing), frameSize});
+    }
+    return layout;
+}
 
 void Renderer::Deleter::operator()(SDL_Renderer* renderer) const noexcept {
     SDL_DestroyRenderer(renderer);
@@ -52,13 +66,27 @@ TextureId Renderer::loadTexture(const std::string& path) {
     return static_cast<TextureId>(textures_.size() - 1);
 }
 
-void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled) {
+SpriteSheetId Renderer::createSpriteSheet(TextureId texture, SpriteSheetLayout layout) {
+    static_cast<void>(textures_.at(texture));
+    spriteSheets_.push_back({texture, std::move(layout.frames)});
+    return static_cast<SpriteSheetId>(spriteSheets_.size() - 1);
+}
+
+void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled,
+                           std::optional<Rect> sourceRect) {
     SDL_Texture* handle = textures_.at(texture).get();
     const SDL_FRect rect{position.x, position.y, size.x, size.y};
+    SDL_FRect srcRect{};
+    const SDL_FRect* src = nullptr;
+    if (sourceRect) {
+        srcRect = SDL_FRect{sourceRect->origin.x, sourceRect->origin.y, sourceRect->size.x,
+                            sourceRect->size.y};
+        src = &srcRect;
+    }
     if (tiled) {
-        SDL_RenderTextureTiled(renderer_.get(), handle, nullptr, 1.f, &rect);
+        SDL_RenderTextureTiled(renderer_.get(), handle, src, 1.f, &rect);
     } else {
-        SDL_RenderTexture(renderer_.get(), handle, nullptr, &rect);
+        SDL_RenderTexture(renderer_.get(), handle, src, &rect);
     }
 }
 
@@ -66,7 +94,12 @@ void Renderer::drawEntities(const Scene& scene) {
     for (const auto& [id, shape] : scene.shapes()) {
         const Transform& transform = scene.transform(id);
         const glm::vec2 size = shape.size * transform.scale;
-        if (shape.texture) {
+        if (const SpriteAnimation* anim = scene.getSpriteAnimation(id)) {
+            const SpriteSheetData& sheet = spriteSheets_.at(anim->sheet);
+            const std::uint32_t frameIndex = anim->frames.at(anim->currentFrame).index;
+            drawTexture(sheet.texture, transform.position, size, false,
+                        sheet.frames.at(frameIndex));
+        } else if (shape.texture) {
             drawTexture(*shape.texture, transform.position, size, shape.tiled);
         } else {
             fillRect(transform.position, size, shape.color);
