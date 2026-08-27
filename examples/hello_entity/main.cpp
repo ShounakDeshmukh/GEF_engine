@@ -16,15 +16,15 @@ int main() {
 
     engine::World world;
 
-    const engine::EntityId mover = world.create();
+    const engine::EntityId mover = world.createEntity();
     world.transform(mover).position = {944.f, 524.f};
     world.addShape(mover, {.size = {32.f, 32.f}, .color = {255, 0, 0, 255}});
 
-    const engine::EntityId ground = world.create();
+    const engine::EntityId ground = world.createEntity();
     world.transform(ground).position = {0.f, 1000.f};
     world.addShape(ground, {.size = {1920.f, 80.f}, .texture = checkerTexture, .tiled = true});
 
-    const engine::EntityId textured = world.create();
+    const engine::EntityId textured = world.createEntity();
     world.transform(textured).position = {944.f, 300.f};
     world.addShape(textured, {.size = {64.f, 64.f}, .texture = circleTexture});
 

@@ -30,7 +30,7 @@ const T* getComponent(const std::unordered_map<EntityId, T>& store, EntityId id)
 
 } // namespace
 
-EntityId World::create() {
+EntityId World::createEntity() {
     const EntityId id = nextId_++;
     transforms_.try_emplace(id);
     return id;
@@ -71,11 +71,11 @@ void World::removeRigidBody(EntityId id) noexcept {
     rigidBodies_.erase(id);
 }
 
-RigidBody* World::rigidBody(EntityId id) noexcept {
+RigidBody* World::getRigidBody(EntityId id) noexcept {
     return getComponent(rigidBodies_, id);
 }
 
-const RigidBody* World::rigidBody(EntityId id) const noexcept {
+const RigidBody* World::getRigidBody(EntityId id) const noexcept {
     return getComponent(rigidBodies_, id);
 }
 
@@ -87,11 +87,11 @@ void World::removeCollider(EntityId id) noexcept {
     colliders_.erase(id);
 }
 
-Collider* World::collider(EntityId id) noexcept {
+Collider* World::getCollider(EntityId id) noexcept {
     return getComponent(colliders_, id);
 }
 
-const Collider* World::collider(EntityId id) const noexcept {
+const Collider* World::getCollider(EntityId id) const noexcept {
     return getComponent(colliders_, id);
 }
 
@@ -103,11 +103,11 @@ void World::removeShape(EntityId id) noexcept {
     shapes_.erase(id);
 }
 
-Shape* World::shape(EntityId id) noexcept {
+Shape* World::getShape(EntityId id) noexcept {
     return getComponent(shapes_, id);
 }
 
-const Shape* World::shape(EntityId id) const noexcept {
+const Shape* World::getShape(EntityId id) const noexcept {
     return getComponent(shapes_, id);
 }
 
