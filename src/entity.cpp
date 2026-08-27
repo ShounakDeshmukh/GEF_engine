@@ -1,8 +1,34 @@
 #include "engine/entity.hpp"
 
 #include <stdexcept>
+#include <unordered_map>
 
 namespace engine {
+
+namespace {
+
+template <typename T>
+T& addComponent(std::unordered_map<EntityId, T>& store, EntityId id, T value, bool idExists,
+                const char* what) {
+    if (!idExists) {
+        throw std::out_of_range(what);
+    }
+    return store.insert_or_assign(id, value).first->second;
+}
+
+template <typename T>
+T* getComponent(std::unordered_map<EntityId, T>& store, EntityId id) noexcept {
+    auto it = store.find(id);
+    return it != store.end() ? &it->second : nullptr;
+}
+
+template <typename T>
+const T* getComponent(const std::unordered_map<EntityId, T>& store, EntityId id) noexcept {
+    auto it = store.find(id);
+    return it != store.end() ? &it->second : nullptr;
+}
+
+} // namespace
 
 EntityId World::create() {
     const EntityId id = nextId_++;
@@ -38,10 +64,7 @@ const Transform& World::transform(EntityId id) const {
 }
 
 RigidBody& World::addRigidBody(EntityId id, RigidBody rb) {
-    if (!exists(id)) {
-        throw std::out_of_range("World::addRigidBody: unknown EntityId");
-    }
-    return rigidBodies_.insert_or_assign(id, rb).first->second;
+    return addComponent(rigidBodies_, id, rb, exists(id), "World::addRigidBody: unknown EntityId");
 }
 
 void World::removeRigidBody(EntityId id) noexcept {
@@ -49,20 +72,15 @@ void World::removeRigidBody(EntityId id) noexcept {
 }
 
 RigidBody* World::rigidBody(EntityId id) noexcept {
-    auto it = rigidBodies_.find(id);
-    return it != rigidBodies_.end() ? &it->second : nullptr;
+    return getComponent(rigidBodies_, id);
 }
 
 const RigidBody* World::rigidBody(EntityId id) const noexcept {
-    auto it = rigidBodies_.find(id);
-    return it != rigidBodies_.end() ? &it->second : nullptr;
+    return getComponent(rigidBodies_, id);
 }
 
 Collider& World::addCollider(EntityId id, Collider c) {
-    if (!exists(id)) {
-        throw std::out_of_range("World::addCollider: unknown EntityId");
-    }
-    return colliders_.insert_or_assign(id, c).first->second;
+    return addComponent(colliders_, id, c, exists(id), "World::addCollider: unknown EntityId");
 }
 
 void World::removeCollider(EntityId id) noexcept {
@@ -70,20 +88,15 @@ void World::removeCollider(EntityId id) noexcept {
 }
 
 Collider* World::collider(EntityId id) noexcept {
-    auto it = colliders_.find(id);
-    return it != colliders_.end() ? &it->second : nullptr;
+    return getComponent(colliders_, id);
 }
 
 const Collider* World::collider(EntityId id) const noexcept {
-    auto it = colliders_.find(id);
-    return it != colliders_.end() ? &it->second : nullptr;
+    return getComponent(colliders_, id);
 }
 
 Shape& World::addShape(EntityId id, Shape s) {
-    if (!exists(id)) {
-        throw std::out_of_range("World::addShape: unknown EntityId");
-    }
-    return shapes_.insert_or_assign(id, s).first->second;
+    return addComponent(shapes_, id, s, exists(id), "World::addShape: unknown EntityId");
 }
 
 void World::removeShape(EntityId id) noexcept {
@@ -91,13 +104,11 @@ void World::removeShape(EntityId id) noexcept {
 }
 
 Shape* World::shape(EntityId id) noexcept {
-    auto it = shapes_.find(id);
-    return it != shapes_.end() ? &it->second : nullptr;
+    return getComponent(shapes_, id);
 }
 
 const Shape* World::shape(EntityId id) const noexcept {
-    auto it = shapes_.find(id);
-    return it != shapes_.end() ? &it->second : nullptr;
+    return getComponent(shapes_, id);
 }
 
 const std::unordered_map<EntityId, Transform>& World::transforms() const noexcept {
