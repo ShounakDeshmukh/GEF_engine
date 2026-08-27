@@ -62,9 +62,9 @@ void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size
     }
 }
 
-void Renderer::drawEntities(const World& world) {
-    for (const auto& [id, shape] : world.shapes()) {
-        const Transform& transform = world.transform(id);
+void Renderer::drawEntities(const Scene& scene) {
+    for (const auto& [id, shape] : scene.shapes()) {
+        const Transform& transform = scene.transform(id);
         const glm::vec2 size = shape.size * transform.scale;
         if (shape.texture) {
             drawTexture(*shape.texture, transform.position, size, shape.tiled);

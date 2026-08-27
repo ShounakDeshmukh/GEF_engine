@@ -9,8 +9,8 @@
 
 namespace engine {
 
-/** Opaque handle to an entity. Values are assigned by World::createEntity() and are
- *  never reused for the lifetime of a World. */
+/** Opaque handle to an entity. Values are assigned by Scene::createEntity() and are
+ *  never reused for the lifetime of a Scene. */
 using EntityId = std::uint32_t;
 
 /** Position and scale of an entity. position is the top-left corner,
@@ -44,7 +44,7 @@ struct Shape {
  *  rather than a public member.
  *
  *  @thread_safety Not thread-safe. */
-class World {
+class Scene {
 public:
     /** Creates a new entity with a default Transform and no other
      *  components. Returns its id. */

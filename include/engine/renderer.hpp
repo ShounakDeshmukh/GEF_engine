@@ -12,7 +12,7 @@ struct SDL_Texture;
 namespace engine {
 
 class Window;
-class World;
+class Scene;
 
 /** RGBA color, 0-255 per channel. */
 struct Color {
@@ -52,7 +52,7 @@ public:
     /** Draws every entity that has a Shape, positioned and scaled by its
      *  Transform. Uses the shape's texture if it has one, otherwise its
      *  color. */
-    void drawEntities(const World& world);
+    void drawEntities(const Scene& scene);
     /** Presents the frame to the window. */
     void present();
 
