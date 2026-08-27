@@ -51,9 +51,9 @@ public:
     EntityId createEntity();
     /** Destroys an entity and all of its components. A no-op if id does
      *  not refer to a live entity. */
-    void destroy(EntityId id) noexcept;
+    void destroyEntity(EntityId id) noexcept;
     /** True if id refers to a live entity. */
-    bool exists(EntityId id) const noexcept;
+    bool hasEntity(EntityId id) const noexcept;
 
     /** The entity's transform. Throws std::out_of_range if id does not
      *  refer to a live entity. */

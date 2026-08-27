@@ -42,8 +42,8 @@ int main() {
         renderer.present();
     }
 
-    world.destroy(mover);
-    engine::log::info("mover destroyed, exists = {}", world.exists(mover));
+    world.destroyEntity(mover);
+    engine::log::info("mover destroyed, exists = {}", world.hasEntity(mover));
 
     engine::log::info("hello_entity exiting cleanly");
     return 0;

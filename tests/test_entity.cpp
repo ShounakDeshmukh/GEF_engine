@@ -9,8 +9,8 @@ TEST_CASE("World::createEntity returns valid, unique ids", "[world]") {
     const engine::EntityId a = world.createEntity();
     const engine::EntityId b = world.createEntity();
 
-    REQUIRE(world.exists(a));
-    REQUIRE(world.exists(b));
+    REQUIRE(world.hasEntity(a));
+    REQUIRE(world.hasEntity(b));
     REQUIRE(a != b);
 }
 
@@ -24,35 +24,35 @@ TEST_CASE("World::createEntity populates a Transform and nothing else", "[world]
     REQUIRE(world.getShape(id) == nullptr);
 }
 
-TEST_CASE("World::destroy removes an entity and all of its components", "[world]") {
+TEST_CASE("World::destroyEntity removes an entity and all of its components", "[world]") {
     engine::World world;
     const engine::EntityId id = world.createEntity();
     world.addRigidBody(id);
     world.addCollider(id, engine::Collider{});
     world.addShape(id, engine::Shape{});
 
-    world.destroy(id);
+    world.destroyEntity(id);
 
-    REQUIRE_FALSE(world.exists(id));
+    REQUIRE_FALSE(world.hasEntity(id));
     REQUIRE(world.getRigidBody(id) == nullptr);
     REQUIRE(world.getCollider(id) == nullptr);
     REQUIRE(world.getShape(id) == nullptr);
 }
 
-TEST_CASE("World::destroy on a nonexistent id is a silent no-op", "[world]") {
+TEST_CASE("World::destroyEntity on a nonexistent id is a silent no-op", "[world]") {
     engine::World world;
-    REQUIRE_NOTHROW(world.destroy(12345));
+    REQUIRE_NOTHROW(world.destroyEntity(12345));
 }
 
 TEST_CASE("World::createEntity never reuses an id after destroy", "[world]") {
     engine::World world;
     const engine::EntityId first = world.createEntity();
-    world.destroy(first);
+    world.destroyEntity(first);
     const engine::EntityId second = world.createEntity();
 
     REQUIRE(first != second);
-    REQUIRE_FALSE(world.exists(first));
-    REQUIRE(world.exists(second));
+    REQUIRE_FALSE(world.hasEntity(first));
+    REQUIRE(world.hasEntity(second));
 }
 
 TEST_CASE("World::removeRigidBody leaves other components intact", "[world]") {
@@ -65,7 +65,7 @@ TEST_CASE("World::removeRigidBody leaves other components intact", "[world]") {
 
     REQUIRE(world.getRigidBody(id) == nullptr);
     REQUIRE(world.getCollider(id) != nullptr);
-    REQUIRE(world.exists(id));
+    REQUIRE(world.hasEntity(id));
 }
 
 TEST_CASE("World::transform on an unknown id throws out_of_range", "[world]") {

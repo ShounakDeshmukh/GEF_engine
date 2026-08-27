@@ -36,14 +36,14 @@ EntityId World::createEntity() {
     return id;
 }
 
-void World::destroy(EntityId id) noexcept {
+void World::destroyEntity(EntityId id) noexcept {
     transforms_.erase(id);
     rigidBodies_.erase(id);
     colliders_.erase(id);
     shapes_.erase(id);
 }
 
-bool World::exists(EntityId id) const noexcept {
+bool World::hasEntity(EntityId id) const noexcept {
     return transforms_.contains(id);
 }
 
@@ -64,7 +64,8 @@ const Transform& World::transform(EntityId id) const {
 }
 
 RigidBody& World::addRigidBody(EntityId id, RigidBody rb) {
-    return addComponent(rigidBodies_, id, rb, exists(id), "World::addRigidBody: unknown EntityId");
+    return addComponent(rigidBodies_, id, rb, hasEntity(id),
+                        "World::addRigidBody: unknown EntityId");
 }
 
 void World::removeRigidBody(EntityId id) noexcept {
@@ -80,7 +81,7 @@ const RigidBody* World::getRigidBody(EntityId id) const noexcept {
 }
 
 Collider& World::addCollider(EntityId id, Collider c) {
-    return addComponent(colliders_, id, c, exists(id), "World::addCollider: unknown EntityId");
+    return addComponent(colliders_, id, c, hasEntity(id), "World::addCollider: unknown EntityId");
 }
 
 void World::removeCollider(EntityId id) noexcept {
@@ -96,7 +97,7 @@ const Collider* World::getCollider(EntityId id) const noexcept {
 }
 
 Shape& World::addShape(EntityId id, Shape s) {
-    return addComponent(shapes_, id, s, exists(id), "World::addShape: unknown EntityId");
+    return addComponent(shapes_, id, s, hasEntity(id), "World::addShape: unknown EntityId");
 }
 
 void World::removeShape(EntityId id) noexcept {
