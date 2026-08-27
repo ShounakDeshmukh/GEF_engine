@@ -94,7 +94,12 @@ void Renderer::drawEntities(const Scene& scene) {
     for (const auto& [id, shape] : scene.shapes()) {
         const Transform& transform = scene.transform(id);
         const glm::vec2 size = shape.size * transform.scale;
-        if (shape.texture) {
+        if (const SpriteAnimation* anim = scene.getSpriteAnimation(id)) {
+            const SpriteSheetData& sheet = spriteSheets_.at(anim->sheet);
+            const std::uint32_t frameIndex = anim->frames.at(anim->currentFrame).index;
+            drawTexture(sheet.texture, transform.position, size, false,
+                        sheet.frames.at(frameIndex));
+        } else if (shape.texture) {
             drawTexture(*shape.texture, transform.position, size, shape.tiled);
         } else {
             fillRect(transform.position, size, shape.color);

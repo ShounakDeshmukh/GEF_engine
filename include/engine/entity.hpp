@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/animation.hpp"
 #include "engine/renderer.hpp"
 
 #include <cstdint>
@@ -92,6 +93,16 @@ public:
     /** id's Shape, or nullptr if it has none. */
     const Shape* getShape(EntityId id) const noexcept;
 
+    /** Attaches (or overwrites) a SpriteAnimation on id. Throws
+     *  std::out_of_range if id does not refer to a live entity. */
+    SpriteAnimation& addSpriteAnimation(EntityId id, SpriteAnimation anim);
+    /** Detaches id's SpriteAnimation, if any. A no-op if it has none. */
+    void removeSpriteAnimation(EntityId id) noexcept;
+    /** id's SpriteAnimation, or nullptr if it has none. */
+    SpriteAnimation* getSpriteAnimation(EntityId id) noexcept;
+    /** id's SpriteAnimation, or nullptr if it has none. */
+    const SpriteAnimation* getSpriteAnimation(EntityId id) const noexcept;
+
     /** All live entities' transforms. */
     const std::unordered_map<EntityId, Transform>& transforms() const noexcept;
     /** All RigidBodies, mutable. */
@@ -100,6 +111,8 @@ public:
     const std::unordered_map<EntityId, Collider>& colliders() const noexcept;
     /** All Shapes. */
     const std::unordered_map<EntityId, Shape>& shapes() const noexcept;
+    /** All SpriteAnimations, mutable. */
+    std::unordered_map<EntityId, SpriteAnimation>& spriteAnimations() noexcept;
 
 private:
     EntityId nextId_ = 1;
@@ -107,6 +120,7 @@ private:
     std::unordered_map<EntityId, RigidBody> rigidBodies_;
     std::unordered_map<EntityId, Collider> colliders_;
     std::unordered_map<EntityId, Shape> shapes_;
+    std::unordered_map<EntityId, SpriteAnimation> spriteAnimations_;
 };
 
 } // namespace engine
