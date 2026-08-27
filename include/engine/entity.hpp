@@ -9,8 +9,8 @@
 
 namespace engine {
 
-/** Opaque handle to an entity. Values are assigned by World::create() and are
- *  never reused for the lifetime of a World. */
+/** Opaque handle to an entity. Values are assigned by Scene::createEntity() and are
+ *  never reused for the lifetime of a Scene. */
 using EntityId = std::uint32_t;
 
 /** Position and scale of an entity. position is the top-left corner,
@@ -44,16 +44,16 @@ struct Shape {
  *  rather than a public member.
  *
  *  @thread_safety Not thread-safe. */
-class World {
+class Scene {
 public:
     /** Creates a new entity with a default Transform and no other
      *  components. Returns its id. */
-    EntityId create();
+    EntityId createEntity();
     /** Destroys an entity and all of its components. A no-op if id does
      *  not refer to a live entity. */
-    void destroy(EntityId id) noexcept;
+    void destroyEntity(EntityId id) noexcept;
     /** True if id refers to a live entity. */
-    bool exists(EntityId id) const noexcept;
+    bool hasEntity(EntityId id) const noexcept;
 
     /** The entity's transform. Throws std::out_of_range if id does not
      *  refer to a live entity. */
@@ -68,9 +68,9 @@ public:
     /** Detaches id's RigidBody, if any. A no-op if it has none. */
     void removeRigidBody(EntityId id) noexcept;
     /** id's RigidBody, or nullptr if it has none. */
-    RigidBody* rigidBody(EntityId id) noexcept;
+    RigidBody* getRigidBody(EntityId id) noexcept;
     /** id's RigidBody, or nullptr if it has none. */
-    const RigidBody* rigidBody(EntityId id) const noexcept;
+    const RigidBody* getRigidBody(EntityId id) const noexcept;
 
     /** Attaches (or overwrites) a Collider on id. Throws std::out_of_range
      *  if id does not refer to a live entity. */
@@ -78,9 +78,9 @@ public:
     /** Detaches id's Collider, if any. A no-op if it has none. */
     void removeCollider(EntityId id) noexcept;
     /** id's Collider, or nullptr if it has none. */
-    Collider* collider(EntityId id) noexcept;
+    Collider* getCollider(EntityId id) noexcept;
     /** id's Collider, or nullptr if it has none. */
-    const Collider* collider(EntityId id) const noexcept;
+    const Collider* getCollider(EntityId id) const noexcept;
 
     /** Attaches (or overwrites) a Shape on id. Throws std::out_of_range if
      *  id does not refer to a live entity. */
@@ -88,9 +88,9 @@ public:
     /** Detaches id's Shape, if any. A no-op if it has none. */
     void removeShape(EntityId id) noexcept;
     /** id's Shape, or nullptr if it has none. */
-    Shape* shape(EntityId id) noexcept;
+    Shape* getShape(EntityId id) noexcept;
     /** id's Shape, or nullptr if it has none. */
-    const Shape* shape(EntityId id) const noexcept;
+    const Shape* getShape(EntityId id) const noexcept;
 
     /** All live entities' transforms. */
     const std::unordered_map<EntityId, Transform>& transforms() const noexcept;

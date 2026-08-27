@@ -14,19 +14,19 @@ int main() {
     const engine::TextureId circleTexture = renderer.loadTexture(assetDir + "texture.png");
     const engine::TextureId checkerTexture = renderer.loadTexture(assetDir + "checker.png");
 
-    engine::World world;
+    engine::Scene scene;
 
-    const engine::EntityId mover = world.create();
-    world.transform(mover).position = {944.f, 524.f};
-    world.addShape(mover, {.size = {32.f, 32.f}, .color = {255, 0, 0, 255}});
+    const engine::EntityId mover = scene.createEntity();
+    scene.transform(mover).position = {944.f, 524.f};
+    scene.addShape(mover, {.size = {32.f, 32.f}, .color = {255, 0, 0, 255}});
 
-    const engine::EntityId ground = world.create();
-    world.transform(ground).position = {0.f, 1000.f};
-    world.addShape(ground, {.size = {1920.f, 80.f}, .texture = checkerTexture, .tiled = true});
+    const engine::EntityId ground = scene.createEntity();
+    scene.transform(ground).position = {0.f, 1000.f};
+    scene.addShape(ground, {.size = {1920.f, 80.f}, .texture = checkerTexture, .tiled = true});
 
-    const engine::EntityId textured = world.create();
-    world.transform(textured).position = {944.f, 300.f};
-    world.addShape(textured, {.size = {64.f, 64.f}, .texture = circleTexture});
+    const engine::EntityId textured = scene.createEntity();
+    scene.transform(textured).position = {944.f, 300.f};
+    scene.addShape(textured, {.size = {64.f, 64.f}, .texture = circleTexture});
 
     const auto start = std::chrono::steady_clock::now();
 
@@ -35,15 +35,15 @@ int main() {
 
         const float elapsedSeconds =
             std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
-        world.transform(mover).position.x = 944.f + 400.f * std::sin(elapsedSeconds);
+        scene.transform(mover).position.x = 944.f + 400.f * std::sin(elapsedSeconds);
 
         renderer.clear({0, 0, 255, 255});
-        renderer.drawEntities(world);
+        renderer.drawEntities(scene);
         renderer.present();
     }
 
-    world.destroy(mover);
-    engine::log::info("mover destroyed, exists = {}", world.exists(mover));
+    scene.destroyEntity(mover);
+    engine::log::info("mover destroyed, exists = {}", scene.hasEntity(mover));
 
     engine::log::info("hello_entity exiting cleanly");
     return 0;

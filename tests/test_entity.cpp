@@ -4,108 +4,108 @@
 #include <optional>
 #include <stdexcept>
 
-TEST_CASE("World::create returns valid, unique ids", "[world]") {
-    engine::World world;
-    const engine::EntityId a = world.create();
-    const engine::EntityId b = world.create();
+TEST_CASE("Scene::createEntity returns valid, unique ids", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId a = scene.createEntity();
+    const engine::EntityId b = scene.createEntity();
 
-    REQUIRE(world.exists(a));
-    REQUIRE(world.exists(b));
+    REQUIRE(scene.hasEntity(a));
+    REQUIRE(scene.hasEntity(b));
     REQUIRE(a != b);
 }
 
-TEST_CASE("World::create populates a Transform and nothing else", "[world]") {
-    engine::World world;
-    const engine::EntityId id = world.create();
+TEST_CASE("Scene::createEntity populates a Transform and nothing else", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
 
-    REQUIRE_NOTHROW(world.transform(id));
-    REQUIRE(world.rigidBody(id) == nullptr);
-    REQUIRE(world.collider(id) == nullptr);
-    REQUIRE(world.shape(id) == nullptr);
+    REQUIRE_NOTHROW(scene.transform(id));
+    REQUIRE(scene.getRigidBody(id) == nullptr);
+    REQUIRE(scene.getCollider(id) == nullptr);
+    REQUIRE(scene.getShape(id) == nullptr);
 }
 
-TEST_CASE("World::destroy removes an entity and all of its components", "[world]") {
-    engine::World world;
-    const engine::EntityId id = world.create();
-    world.addRigidBody(id);
-    world.addCollider(id, engine::Collider{});
-    world.addShape(id, engine::Shape{});
+TEST_CASE("Scene::destroyEntity removes an entity and all of its components", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.addRigidBody(id);
+    scene.addCollider(id, engine::Collider{});
+    scene.addShape(id, engine::Shape{});
 
-    world.destroy(id);
+    scene.destroyEntity(id);
 
-    REQUIRE_FALSE(world.exists(id));
-    REQUIRE(world.rigidBody(id) == nullptr);
-    REQUIRE(world.collider(id) == nullptr);
-    REQUIRE(world.shape(id) == nullptr);
+    REQUIRE_FALSE(scene.hasEntity(id));
+    REQUIRE(scene.getRigidBody(id) == nullptr);
+    REQUIRE(scene.getCollider(id) == nullptr);
+    REQUIRE(scene.getShape(id) == nullptr);
 }
 
-TEST_CASE("World::destroy on a nonexistent id is a silent no-op", "[world]") {
-    engine::World world;
-    REQUIRE_NOTHROW(world.destroy(12345));
+TEST_CASE("Scene::destroyEntity on a nonexistent id is a silent no-op", "[scene]") {
+    engine::Scene scene;
+    REQUIRE_NOTHROW(scene.destroyEntity(12345));
 }
 
-TEST_CASE("World::create never reuses an id after destroy", "[world]") {
-    engine::World world;
-    const engine::EntityId first = world.create();
-    world.destroy(first);
-    const engine::EntityId second = world.create();
+TEST_CASE("Scene::createEntity never reuses an id after destroy", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId first = scene.createEntity();
+    scene.destroyEntity(first);
+    const engine::EntityId second = scene.createEntity();
 
     REQUIRE(first != second);
-    REQUIRE_FALSE(world.exists(first));
-    REQUIRE(world.exists(second));
+    REQUIRE_FALSE(scene.hasEntity(first));
+    REQUIRE(scene.hasEntity(second));
 }
 
-TEST_CASE("World::removeRigidBody leaves other components intact", "[world]") {
-    engine::World world;
-    const engine::EntityId id = world.create();
-    world.addRigidBody(id);
-    world.addCollider(id, engine::Collider{});
+TEST_CASE("Scene::removeRigidBody leaves other components intact", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.addRigidBody(id);
+    scene.addCollider(id, engine::Collider{});
 
-    world.removeRigidBody(id);
+    scene.removeRigidBody(id);
 
-    REQUIRE(world.rigidBody(id) == nullptr);
-    REQUIRE(world.collider(id) != nullptr);
-    REQUIRE(world.exists(id));
+    REQUIRE(scene.getRigidBody(id) == nullptr);
+    REQUIRE(scene.getCollider(id) != nullptr);
+    REQUIRE(scene.hasEntity(id));
 }
 
-TEST_CASE("World::transform on an unknown id throws out_of_range", "[world]") {
-    engine::World world;
-    REQUIRE_THROWS_AS(world.transform(999), std::out_of_range);
+TEST_CASE("Scene::transform on an unknown id throws out_of_range", "[scene]") {
+    engine::Scene scene;
+    REQUIRE_THROWS_AS(scene.transform(999), std::out_of_range);
 }
 
-TEST_CASE("World::add* on an unknown id throws out_of_range", "[world]") {
-    engine::World world;
-    REQUIRE_THROWS_AS(world.addRigidBody(999), std::out_of_range);
-    REQUIRE_THROWS_AS(world.addCollider(999, engine::Collider{}), std::out_of_range);
-    REQUIRE_THROWS_AS(world.addShape(999, engine::Shape{}), std::out_of_range);
+TEST_CASE("Scene::add* on an unknown id throws out_of_range", "[scene]") {
+    engine::Scene scene;
+    REQUIRE_THROWS_AS(scene.addRigidBody(999), std::out_of_range);
+    REQUIRE_THROWS_AS(scene.addCollider(999, engine::Collider{}), std::out_of_range);
+    REQUIRE_THROWS_AS(scene.addShape(999, engine::Shape{}), std::out_of_range);
 }
 
-TEST_CASE("World::rigidBodies iteration reflects live mutation", "[world]") {
-    engine::World world;
-    const engine::EntityId id = world.create();
-    world.addRigidBody(id);
+TEST_CASE("Scene::rigidBodies iteration reflects live mutation", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.addRigidBody(id);
 
-    for (auto& entry : world.rigidBodies()) {
+    for (auto& entry : scene.rigidBodies()) {
         entry.second.velocity = glm::vec2{5.f, -3.f};
     }
 
-    REQUIRE(world.rigidBody(id)->velocity.x == 5.f);
-    REQUIRE(world.rigidBody(id)->velocity.y == -3.f);
+    REQUIRE(scene.getRigidBody(id)->velocity.x == 5.f);
+    REQUIRE(scene.getRigidBody(id)->velocity.y == -3.f);
 }
 
-TEST_CASE("RigidBody with nullopt gravity round-trips as nullopt", "[world]") {
-    engine::World world;
-    const engine::EntityId id = world.create();
-    world.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravity = std::nullopt});
+TEST_CASE("RigidBody with nullopt gravity round-trips as nullopt", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravity = std::nullopt});
 
-    REQUIRE_FALSE(world.rigidBody(id)->gravity.has_value());
+    REQUIRE_FALSE(scene.getRigidBody(id)->gravity.has_value());
 }
 
-TEST_CASE("RigidBody with an explicit gravity value round-trips correctly", "[world]") {
-    engine::World world;
-    const engine::EntityId id = world.create();
-    world.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravity = 250.f});
+TEST_CASE("RigidBody with an explicit gravity value round-trips correctly", "[scene]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravity = 250.f});
 
-    REQUIRE(world.rigidBody(id)->gravity.has_value());
-    REQUIRE(world.rigidBody(id)->gravity.value() == 250.f);
+    REQUIRE(scene.getRigidBody(id)->gravity.has_value());
+    REQUIRE(scene.getRigidBody(id)->gravity.value() == 250.f);
 }
