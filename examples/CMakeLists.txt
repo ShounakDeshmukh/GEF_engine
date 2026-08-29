@@ -6,3 +6,9 @@ target_link_libraries(hello_entity PRIVATE engine)
 target_compile_definitions(hello_entity PRIVATE
     HELLO_ENTITY_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/hello_entity/assets/"
 )
+
+add_executable(gravity_demo gravity_demo/main.cpp)
+target_link_libraries(gravity_demo PRIVATE engine)
+target_compile_definitions(gravity_demo PRIVATE
+    GRAVITY_DEMO_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/hello_entity/assets/"
+)
