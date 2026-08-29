@@ -15,7 +15,7 @@ float PhysicsSystem::gravity() const noexcept {
 
 void PhysicsSystem::step(Scene& scene, float deltaSeconds) const {
     for (auto& [id, rigidBody] : scene.rigidBodies()) {
-        rigidBody.velocity.y += gravity_ * rigidBody.gravityScale * deltaSeconds;
+        rigidBody.velocity.y += gravity_ * deltaSeconds;
 
         Transform& transform = scene.transform(id);
         transform.position += rigidBody.velocity * deltaSeconds;

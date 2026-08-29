@@ -97,20 +97,21 @@ TEST_CASE("Scene::rigidBodies iteration reflects live mutation", "[scene]") {
     REQUIRE(scene.getRigidBody(id)->velocity.y == -3.f);
 }
 
-TEST_CASE("RigidBody defaults to zero gravity scale", "[scene]") {
+TEST_CASE("RigidBody with nullopt gravity round-trips as nullopt", "[scene]") {
     engine::Scene scene;
     const engine::EntityId id = scene.createEntity();
-    scene.addRigidBody(id);
+    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravity = std::nullopt});
 
-    REQUIRE(scene.getRigidBody(id)->gravityScale == 0.f);
+    REQUIRE_FALSE(scene.getRigidBody(id)->gravity.has_value());
 }
 
-TEST_CASE("RigidBody stores an explicit gravity scale", "[scene]") {
+TEST_CASE("RigidBody with an explicit gravity value round-trips correctly", "[scene]") {
     engine::Scene scene;
     const engine::EntityId id = scene.createEntity();
-    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravityScale = 0.5f});
+    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravity = 250.f});
 
-    REQUIRE(scene.getRigidBody(id)->gravityScale == 0.5f);
+    REQUIRE(scene.getRigidBody(id)->gravity.has_value());
+    REQUIRE(scene.getRigidBody(id)->gravity.value() == 250.f);
 }
 
 TEST_CASE("SpriteSheetLayout::grid produces frame rects in row-major order", "[renderer]") {

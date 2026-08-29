@@ -15,10 +15,9 @@ TEST_CASE("PhysicsSystem applies velocity without gravity", "[physics]") {
     engine::Scene scene;
     const engine::EntityId id = scene.createEntity();
     scene.transform(id).position = {50.f, 100.f};
-    scene.addRigidBody(
-        id, engine::RigidBody{.velocity = {20.f, 40.f}, .gravityScale = 0.f});
+    scene.addRigidBody(id, engine::RigidBody{.velocity = {20.f, 40.f}});
 
-    engine::PhysicsSystem physics(200.f);
+    engine::PhysicsSystem physics(0.f);
     physics.step(scene, 0.5f);
 
     REQUIRE(scene.transform(id).position.x == Catch::Approx(60.f));
@@ -27,28 +26,16 @@ TEST_CASE("PhysicsSystem applies velocity without gravity", "[physics]") {
     REQUIRE(scene.getRigidBody(id)->velocity.y == Catch::Approx(40.f));
 }
 
-TEST_CASE("PhysicsSystem applies normal gravity", "[physics]") {
+TEST_CASE("PhysicsSystem applies gravity to a rigid body", "[physics]") {
     engine::Scene scene;
     const engine::EntityId id = scene.createEntity();
-    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravityScale = 1.f});
+    scene.addRigidBody(id);
 
     engine::PhysicsSystem physics(200.f);
     physics.step(scene, 0.25f);
 
     REQUIRE(scene.getRigidBody(id)->velocity.y == Catch::Approx(50.f));
     REQUIRE(scene.transform(id).position.y == Catch::Approx(12.5f));
-}
-
-TEST_CASE("PhysicsSystem scales gravity per rigid body", "[physics]") {
-    engine::Scene scene;
-    const engine::EntityId id = scene.createEntity();
-    scene.addRigidBody(id, engine::RigidBody{.velocity = {}, .gravityScale = 0.5f});
-
-    engine::PhysicsSystem physics(200.f);
-    physics.step(scene, 0.5f);
-
-    REQUIRE(scene.getRigidBody(id)->velocity.y == Catch::Approx(50.f));
-    REQUIRE(scene.transform(id).position.y == Catch::Approx(25.f));
 }
 
 TEST_CASE("PhysicsSystem ignores entities without rigid bodies", "[physics]") {
