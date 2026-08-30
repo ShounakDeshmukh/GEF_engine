@@ -49,6 +49,9 @@ struct SpriteSheetLayout {
                                   glm::vec2 offset = {0.f, 0.f}, glm::vec2 spacing = {0.f, 0.f});
 };
 
+/** Determines whether entities retain pixel dimensions or scale with the render output. */
+enum class ScalingMode { Constant, Proportional };
+
 /** Draws into a Window using SDL's hardware-accelerated renderer. */
 class Renderer {
 public:
@@ -85,6 +88,15 @@ public:
     /** Presents the frame to the window. */
     void present();
 
+    /** Returns the current rendering scaling mode. */
+    ScalingMode scalingMode() const noexcept;
+
+    /** Selects the rendering scaling mode. */
+    void setScalingMode(ScalingMode mode) noexcept;
+
+    /** Switches between constant and proportional scaling. */
+    void toggleScalingMode() noexcept;
+
 private:
     struct Deleter {
         void operator()(SDL_Renderer*) const noexcept;
@@ -97,9 +109,14 @@ private:
         std::vector<Rect> frames;
     };
 
+    glm::vec2 scalingFactor() const;
+
     std::unique_ptr<SDL_Renderer, Deleter> renderer_;
     std::vector<std::unique_ptr<SDL_Texture, TextureDeleter>> textures_;
     std::vector<SpriteSheetData> spriteSheets_;
+
+    glm::vec2 referenceSize_{0.f, 0.f};
+    ScalingMode scalingMode_ = ScalingMode::Constant;
 };
 
 } // namespace engine
