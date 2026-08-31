@@ -18,6 +18,8 @@ public:
 
     void step(Scene& scene, float deltaSeconds) const;
 
+    bool isCollision(Scene& scene, int entityID1, int entityID2) const;
+
 private:
     float gravity_;
 };
