@@ -11,3 +11,4 @@
 #include "engine/physics.hpp"
 #include "engine/renderer.hpp"
 #include "engine/window.hpp"
+#include "engine/inputHandler.hpp"

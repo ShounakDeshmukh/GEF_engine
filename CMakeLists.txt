@@ -18,6 +18,7 @@ add_library(engine STATIC
     src/clock.cpp
     src/animation.cpp
     src/physics.cpp
+    src/inputHandler.cpp
 )
 
 target_include_directories(engine
