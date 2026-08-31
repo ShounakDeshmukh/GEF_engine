@@ -8,6 +8,7 @@ int main() {
 
     engine::Window window("hello_entity", 1920, 1080);
     engine::Renderer renderer(window);
+    auto input = engine::InputHandler();
 
     const std::string assetDir = HELLO_ENTITY_ASSET_DIR;
     const engine::TextureId circleTexture = renderer.loadTexture(assetDir + "texture.png");
@@ -60,6 +61,15 @@ int main() {
         totalElapsed += clock.deltaSeconds();
 
         scene.transform(mover).position.x = 944.f + 400.f * std::sin(totalElapsed);
+        if(input.IsKeyPressed('w'))
+        {
+            scene.transform(mover).position.y -= 1.0;
+        }
+        if(input.IsKeyPressed('s'))
+        {
+            scene.transform(mover).position.y += 1.0;
+        }
+
         engine::advanceAnimations(scene, clock.deltaSeconds());
 
         renderer.clear({0, 0, 255, 255});
