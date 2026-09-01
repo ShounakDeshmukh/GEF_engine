@@ -1,27 +1,24 @@
 #pragma once
 
 #include <unordered_map>
+#include "engine/inputScancodes.hpp"
 
 namespace engine
 {
     class InputHandler {
     
         public:
-        InputHandler();
+        InputHandler(){}
         ~InputHandler(){}
-        InputHandler(const InputHandler& other);
-        InputHandler& operator=(const InputHandler& other);
-        InputHandler(InputHandler&& other);
-        InputHandler& operator=(InputHandler&& other);
     
-    
-        bool IsKeyPressed(const char val);
-    
+        bool IsKeyPressed(SC::SDL_Scancode scancode);
+        
         private:
-            std::unordered_map<char, int> m_charToScanCodeMap;
-    
+
     
     };
+
+
     
 } // namespace engine
 
