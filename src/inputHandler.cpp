@@ -5,20 +5,17 @@
 
 namespace engine {
 
-bool InputHandler::IsKeyPressed(SC::SDL_Scancode scancode)
-{
-    //Should be threadsafe as its only doing reads
+bool InputHandler::isKeyPressed(SC::SDL_Scancode scancode) {
+    // Should be threadsafe as its only doing reads
     int keyboardsize = 0;
     auto sdlKeyState = SDL_GetKeyboardState(&keyboardsize);
 
-    if(static_cast<int>(scancode) > keyboardsize)
-    {
-        //Key not found 
-        return false; 
+    if (static_cast<int>(scancode) > keyboardsize) {
+        // Key not found
+        return false;
     }
 
     return sdlKeyState[scancode];
 }
 
-} //namespace engine
-
+} // namespace engine
