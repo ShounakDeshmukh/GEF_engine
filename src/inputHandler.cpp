@@ -10,7 +10,7 @@ bool InputHandler::isKeyPressed(SC::SDL_Scancode scancode) {
     int keyboardsize = 0;
     auto sdlKeyState = SDL_GetKeyboardState(&keyboardsize);
 
-    if (static_cast<int>(scancode) > keyboardsize) {
+    if (static_cast<int>(scancode) >= keyboardsize) {
         // Key not found
         return false;
     }
