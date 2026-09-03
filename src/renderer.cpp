@@ -36,17 +36,6 @@ Renderer::Renderer(Window& window)
     if (!renderer_) {
         throw std::runtime_error(SDL_GetError());
     }
-
-    int outputWidth = 0;
-    int outputHeight = 0;
-
-    if (!SDL_GetCurrentRenderOutputSize(renderer_.get(), &outputWidth, &outputHeight)) {
-        throw std::runtime_error(SDL_GetError());
-    }
-
-    referenceSize_ = {
-        static_cast<float>(outputWidth), static_cast<float>(outputHeight)
-    };
 }
 
 Renderer::~Renderer() = default;
@@ -103,20 +92,18 @@ void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size
 }
 
 void Renderer::drawEntities(const Scene& scene) {
-    const glm::vec2 scaleFactor = scalingFactor();
     for (const auto& [id, shape] : scene.shapes()) {
         const Transform& transform = scene.transform(id);
-        const glm::vec2 position = transform.position * scaleFactor;
-        const glm::vec2 size = shape.size * transform.scale * scaleFactor;
+        const glm::vec2 size = shape.size * transform.scale;
         if (const SpriteAnimation* anim = scene.getSpriteAnimation(id)) {
             const SpriteSheetData& sheet = spriteSheets_.at(anim->sheet);
             const std::uint32_t frameIndex = anim->frames.at(anim->currentFrame).index;
-            drawTexture(sheet.texture, position, size, false,
+            drawTexture(sheet.texture, transform.position, size, false,
                         sheet.frames.at(frameIndex));
         } else if (shape.texture) {
-            drawTexture(*shape.texture, position, size, shape.tiled);
+            drawTexture(*shape.texture, transform.position, size, shape.tiled);
         } else {
-            fillRect(position, size, shape.color);
+            fillRect(transform.position, size, shape.color);
         }
     }
 }
@@ -129,32 +116,27 @@ ScalingMode Renderer::scalingMode() const noexcept {
     return scalingMode_;
 }
 
-void Renderer::setScalingMode(ScalingMode mode) noexcept {
-    scalingMode_ = mode;
-}
+void Renderer::setScalingMode(ScalingMode mode) {
+    const SDL_RendererLogicalPresentation presentation =
+        mode == ScalingMode::Proportional ? SDL_LOGICAL_PRESENTATION_LETTERBOX
+                                          : SDL_LOGICAL_PRESENTATION_DISABLED;
+    const int logicalWidth = mode == ScalingMode::Proportional ? referenceWidth_ : 0;
+    const int logicalHeight = mode == ScalingMode::Proportional ? referenceHeight_ : 0;
 
-void Renderer::toggleScalingMode() noexcept {
-    if (scalingMode_ == ScalingMode::Constant) {
-        scalingMode_ = ScalingMode::Proportional;
-    } else {
-        scalingMode_ = ScalingMode::Constant;
-    }
-}
-
-glm::vec2 Renderer::scalingFactor() const {
-    if (scalingMode_ == ScalingMode::Constant) {
-        return {1.f, 1.f};
-    }
-
-    int outputWidth = 0;
-    int outputHeight = 0;
-
-    if (!SDL_GetCurrentRenderOutputSize(renderer_.get(), &outputWidth, &outputHeight)) {
+    if (!SDL_SetRenderLogicalPresentation(renderer_.get(), logicalWidth, logicalHeight,
+                                          presentation)) {
         throw std::runtime_error(SDL_GetError());
     }
 
-    return {static_cast<float>(outputWidth) / referenceSize_.x,
-            static_cast<float>(outputHeight) / referenceSize_.y};
+    scalingMode_ = mode;
+}
+
+void Renderer::toggleScalingMode() {
+    if (scalingMode_ == ScalingMode::Constant) {
+        setScalingMode(ScalingMode::Proportional);
+    } else {
+        setScalingMode(ScalingMode::Constant);
+    }
 }
 
 } // namespace engine
