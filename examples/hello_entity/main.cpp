@@ -62,10 +62,10 @@ int main() {
 
         scene.transform(mover).position.x = 944.f + 400.f * std::sin(totalElapsed);
         if (input.isKeyPressed(engine::SC::SDL_SCANCODE_W)) {
-            scene.transform(mover).position.y -= 50 * clock.deltaSeconds();
+            scene.transform(mover).position.y -= 100 * clock.deltaSeconds();
         }
         if (input.isKeyPressed(engine::SC::SDL_SCANCODE_S)) {
-            scene.transform(mover).position.y += 50 * clock.deltaSeconds();
+            scene.transform(mover).position.y += 100 * clock.deltaSeconds();
         }
 
         engine::advanceAnimations(scene, clock.deltaSeconds());
