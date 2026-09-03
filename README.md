@@ -40,7 +40,7 @@ The `libasound2-dev`... block is SDL3's own Linux build dependency list (X11,
 Wayland, audio, GL/EGL, input) — SDL3 is built from source via `FetchContent`, so
 these need to be present on whatever machine configures the build.
 
-## Build and test
+## Build and test : Linux
 
 Configure — only needed once. CMake regenerates automatically afterward if
 `CMakeLists.txt`/`cmake/Dependencies.cmake` change, so you rarely need to run
@@ -83,6 +83,51 @@ code edits, since `cmake --build` only rebuilds what changed:
 ```sh
 rm -rf build
 ```
+
+## Build and test : Mac
+
+Configure — only needed once. CMake regenerates automatically afterward if
+`CMakeLists.txt`/`cmake/Dependencies.cmake` change, so you rarely need to run
+this again by hand:
+
+```sh
+cmake --preset mac-debug
+```
+
+Build — safe to run after every code change; only rebuilds what changed:
+
+```sh
+cmake --build --preset mac-debug
+```
+
+Or configure + build + test in a single step:
+
+```sh
+cmake --workflow --preset mac-debug
+```
+
+Run the tests:
+
+```sh
+ctest --test-dir build/mac-debug --output-on-failure
+```
+
+Run the example:
+
+```sh
+./build/mac-debug/examples/hello_window
+```
+
+`hello_window` opens a 1920x1080 window, clears it to blue every frame, and exits
+cleanly when the window is closed.
+
+Clean — only needed after a toolchain/compiler change; not needed for normal
+code edits, since `cmake --build` only rebuilds what changed:
+
+```sh
+rm -rf build
+```
+
 
 ## Formatting
 
