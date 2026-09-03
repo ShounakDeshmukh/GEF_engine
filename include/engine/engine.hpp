@@ -8,5 +8,7 @@
 #include "engine/clock.hpp"
 #include "engine/entity.hpp"
 #include "engine/log.hpp"
+#include "engine/physics.hpp"
 #include "engine/renderer.hpp"
 #include "engine/window.hpp"
+#include "engine/inputHandler.hpp"

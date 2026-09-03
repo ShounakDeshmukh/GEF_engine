@@ -21,11 +21,9 @@ struct Transform {
     glm::vec2 scale{1.f, 1.f};
 };
 
-/** Linear velocity and optional gravity for a physics-driven entity. */
+/** Linear velocity for a physics-driven entity. */
 struct RigidBody {
     glm::vec2 velocity{0.f, 0.f};
-    std::optional<float> gravity; // nullopt = unaffected; present = gravity
-                                  // accel for this entity (px/s^2)
 };
 
 /** Axis-aligned collision extents. */
