@@ -28,8 +28,9 @@ void Window::Deleter::operator()(SDL_Window* window) const noexcept {
 }
 
 Window::Window(const std::string& title, int width, int height)
-    : sdlVideoGuard_(acquireSdlVideo()), window_(SDL_CreateWindow(title.c_str(), width, height, 0)),
-      title_(title), width_(width), height_(height) {
+    : sdlVideoGuard_(acquireSdlVideo()),
+      window_(SDL_CreateWindow(title.c_str(), width, height, SDL_WINDOW_RESIZABLE)), title_(title),
+      width_(width), height_(height) {
     if (!window_) {
         throw std::runtime_error(SDL_GetError());
     }
@@ -59,6 +60,10 @@ void Window::pollEvents() {
         } else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                    event.window.windowID == SDL_GetWindowID(window_.get())) {
             shouldClose_ = true;
+        } else if (event.type == SDL_EVENT_WINDOW_RESIZED &&
+                   event.window.windowID == SDL_GetWindowID(window_.get())) {
+            width_ = event.window.data1;
+            height_ = event.window.data2;
         }
     }
 }

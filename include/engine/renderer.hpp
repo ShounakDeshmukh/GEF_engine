@@ -49,6 +49,11 @@ struct SpriteSheetLayout {
                                   glm::vec2 offset = {0.f, 0.f}, glm::vec2 spacing = {0.f, 0.f});
 };
 
+/** Determines how renderer coordinates are presented in the window.
+ *  Constant uses native output pixels. Proportional uniformly scales a
+ *  1920x1080 logical frame to fit while preserving its aspect ratio. */
+enum class ScalingMode { Constant, Proportional };
+
 /** Draws into a Window using SDL's hardware-accelerated renderer. */
 class Renderer {
 public:
@@ -85,6 +90,17 @@ public:
     /** Presents the frame to the window. */
     void present();
 
+    /** Returns the current rendering scaling mode. */
+    ScalingMode scalingMode() const noexcept;
+
+    /** Selects the rendering scaling mode. Throws std::runtime_error if SDL
+     *  cannot change the logical presentation. */
+    void setScalingMode(ScalingMode mode);
+
+    /** Switches between constant and proportional scaling. Throws
+     *  std::runtime_error if SDL cannot change the logical presentation. */
+    void toggleScalingMode();
+
 private:
     struct Deleter {
         void operator()(SDL_Renderer*) const noexcept;
@@ -97,9 +113,14 @@ private:
         std::vector<Rect> frames;
     };
 
+    static constexpr int referenceWidth_ = 1920;
+    static constexpr int referenceHeight_ = 1080;
+
     std::unique_ptr<SDL_Renderer, Deleter> renderer_;
     std::vector<std::unique_ptr<SDL_Texture, TextureDeleter>> textures_;
     std::vector<SpriteSheetData> spriteSheets_;
+
+    ScalingMode scalingMode_ = ScalingMode::Constant;
 };
 
 } // namespace engine

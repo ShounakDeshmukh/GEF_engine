@@ -21,9 +21,9 @@ public:
     Window(Window&&) noexcept;
     Window& operator=(Window&&) noexcept;
 
-    /** Width in pixels. */
+    /** Width of the client area in window coordinates. */
     int width() const noexcept;
-    /** Height in pixels. */
+    /** Height of the client area in window coordinates. */
     int height() const noexcept;
     /** Window title. */
     const std::string& title() const noexcept;

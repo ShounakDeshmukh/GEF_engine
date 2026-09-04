@@ -31,7 +31,8 @@ void Renderer::TextureDeleter::operator()(SDL_Texture* texture) const noexcept {
     SDL_DestroyTexture(texture);
 }
 
-Renderer::Renderer(Window& window) : renderer_(SDL_CreateRenderer(window.nativeHandle(), nullptr)) {
+Renderer::Renderer(Window& window)
+    : renderer_(SDL_CreateRenderer(window.nativeHandle(), nullptr)) {
     if (!renderer_) {
         throw std::runtime_error(SDL_GetError());
     }
@@ -109,6 +110,33 @@ void Renderer::drawEntities(const Scene& scene) {
 
 void Renderer::present() {
     SDL_RenderPresent(renderer_.get());
+}
+
+ScalingMode Renderer::scalingMode() const noexcept {
+    return scalingMode_;
+}
+
+void Renderer::setScalingMode(ScalingMode mode) {
+    const SDL_RendererLogicalPresentation presentation =
+        mode == ScalingMode::Proportional ? SDL_LOGICAL_PRESENTATION_LETTERBOX
+                                          : SDL_LOGICAL_PRESENTATION_DISABLED;
+    const int logicalWidth = mode == ScalingMode::Proportional ? referenceWidth_ : 0;
+    const int logicalHeight = mode == ScalingMode::Proportional ? referenceHeight_ : 0;
+
+    if (!SDL_SetRenderLogicalPresentation(renderer_.get(), logicalWidth, logicalHeight,
+                                          presentation)) {
+        throw std::runtime_error(SDL_GetError());
+    }
+
+    scalingMode_ = mode;
+}
+
+void Renderer::toggleScalingMode() {
+    if (scalingMode_ == ScalingMode::Constant) {
+        setScalingMode(ScalingMode::Proportional);
+    } else {
+        setScalingMode(ScalingMode::Constant);
+    }
 }
 
 } // namespace engine
