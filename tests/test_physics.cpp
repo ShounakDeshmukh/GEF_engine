@@ -64,7 +64,8 @@ TEST_CASE("PhysicsSystem::isCollision detects overlapping colliders", "[physics]
     REQUIRE(physics.isCollision(scene, a, b));
 }
 
-TEST_CASE("PhysicsSystem::isCollision reports false for separated colliders", "[physics][collision]") {
+TEST_CASE("PhysicsSystem::isCollision reports false for separated colliders",
+          "[physics][collision]") {
     engine::Scene scene;
     const engine::EntityId a = scene.createEntity();
     scene.transform(a).position = {0.f, 0.f};
@@ -128,6 +129,23 @@ TEST_CASE("PhysicsSystem::GetCollisionOverlap returns the intersection rect",
     REQUIRE(overlap.origin.y == Catch::Approx(20.f));
     REQUIRE(overlap.size.x == Catch::Approx(16.f));
     REQUIRE(overlap.size.y == Catch::Approx(12.f));
+}
+
+TEST_CASE("PhysicsSystem::isCollision scales the collider by transform.scale",
+          "[physics][collision]") {
+    engine::Scene scene;
+    const engine::EntityId a = scene.createEntity();
+    scene.transform(a).position = {0.f, 0.f};
+    scene.addCollider(a, {.size = {32.f, 32.f}});
+
+    const engine::EntityId b = scene.createEntity();
+    scene.transform(b).position = {-40.f, 0.f};
+    scene.transform(b).scale = {2.f, 2.f};
+    scene.addCollider(b, {.size = {32.f, 32.f}});
+
+    engine::PhysicsSystem physics(0.f);
+    //  COllider B is scaled to 64x64, so it overlaps A by 8 pixels on the left side.
+    REQUIRE(physics.isCollision(scene, a, b));
 }
 
 TEST_CASE("PhysicsSystem::GetCollisionOverlap is an empty rect when not overlapping",

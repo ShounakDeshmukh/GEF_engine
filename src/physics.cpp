@@ -36,8 +36,10 @@ bool PhysicsSystem::isCollision(Scene& scene, EntityId entityID1, EntityId entit
         return false;
     }
 
-    SDL_FRect e1 = {e1Pos.position.x, e1Pos.position.y, e1Collider->size.x, e1Collider->size.y};
-    SDL_FRect e2 = {e2Pos.position.x, e2Pos.position.y, e2Collider->size.x, e2Collider->size.y};
+    const glm::vec2 e1Size = e1Collider->size * e1Pos.scale;
+    const glm::vec2 e2Size = e2Collider->size * e2Pos.scale;
+    SDL_FRect e1 = {e1Pos.position.x, e1Pos.position.y, e1Size.x, e1Size.y};
+    SDL_FRect e2 = {e2Pos.position.x, e2Pos.position.y, e2Size.x, e2Size.y};
 
     bool retVal = SDL_HasRectIntersectionFloat(&e1, &e2);
     return retVal;
@@ -55,8 +57,10 @@ Rect PhysicsSystem::GetCollisionOverlap(Scene& scene, EntityId entityID1, Entity
         return Rect{{0,0}, {0,0}};
     }
 
-    SDL_FRect e1 = {e1Pos.position.x, e1Pos.position.y, e1Collider->size.x, e1Collider->size.y};
-    SDL_FRect e2 = {e2Pos.position.x, e2Pos.position.y, e2Collider->size.x, e2Collider->size.y};
+    const glm::vec2 e1Size = e1Collider->size * e1Pos.scale;
+    const glm::vec2 e2Size = e2Collider->size * e2Pos.scale;
+    SDL_FRect e1 = {e1Pos.position.x, e1Pos.position.y, e1Size.x, e1Size.y};
+    SDL_FRect e2 = {e2Pos.position.x, e2Pos.position.y, e2Size.x, e2Size.y};
     SDL_FRect e3 = {0.0, 0.0, 0.0, 0.0};
 
     if (!SDL_GetRectIntersectionFloat(&e1, &e2, &e3)) {
