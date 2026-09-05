@@ -52,23 +52,28 @@ int main() {
     scene.addSpriteAnimation(walkerLeft,
                              engine::SpriteAnimation::uniform(walkerSheet, {4, 5, 6, 7}, 0.1f));
 
-    engine::Clock clock;
-    float totalElapsed = 0.f;
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    engine::Stepper sim(gameTime);
 
     while (!window.shouldClose()) {
         window.pollEvents();
-        clock.tick();
-        totalElapsed += clock.deltaSeconds();
 
-        scene.transform(mover).position.x = 944.f + 400.f * std::sin(totalElapsed);
-        if (input.isKeyPressed(engine::SC::SDL_SCANCODE_W)) {
-            scene.transform(mover).position.y -= 100 * clock.deltaSeconds();
-        }
-        if (input.isKeyPressed(engine::SC::SDL_SCANCODE_S)) {
-            scene.transform(mover).position.y += 100 * clock.deltaSeconds();
-        }
+        sim.beginFrame();
+        while (sim.step()) {
+            const float stepSeconds = gameTime.tickSeconds();
+            const float elapsed = static_cast<float>(sim.tickIndex()) * stepSeconds;
 
-        engine::advanceAnimations(scene, clock.deltaSeconds());
+            scene.transform(mover).position.x = 944.f + 400.f * std::sin(elapsed);
+            if (input.isKeyPressed(engine::SC::SDL_SCANCODE_W)) {
+                scene.transform(mover).position.y -= 100 * stepSeconds;
+            }
+            if (input.isKeyPressed(engine::SC::SDL_SCANCODE_S)) {
+                scene.transform(mover).position.y += 100 * stepSeconds;
+            }
+
+            engine::advanceAnimations(scene, stepSeconds);
+        }
 
         renderer.clear({0, 0, 255, 255});
         renderer.drawEntities(scene);
