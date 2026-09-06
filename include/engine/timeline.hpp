@@ -28,8 +28,9 @@ public:
      *  decrease. */
     explicit Timeline(const std::int64_t* microsecondCounter);
 
-    /** Timeline running on source at ticksPerSecond ticks per second of real
-     *  time. source must outlive this Timeline. */
+    /** Timeline running on source, ticking ticksPerSecond times per second of
+     *  simulated time. Under a source that is slowed or sped up, that is not
+     *  the same as a second of real time. source must outlive this Timeline. */
     Timeline(const Timeline& source, std::int64_t ticksPerSecond);
 
     /** Ticks elapsed on this timeline. Monotonic. */
@@ -47,9 +48,9 @@ public:
     /** Speed relative to the source, as set by setSpeedMultiplier(). */
     float speedMultiplier() const noexcept;
 
-    /** Sets speed relative to the source: 1.0 real time, 0.5 half, 2.0 double.
-     *  A no-op, logged as an error, if multiplier is outside 0.000001 to
-     *  1000000. */
+    /** Sets speed relative to the source: 1.0 matches the source, 0.5 half,
+     *  2.0 double. A no-op, logged as an error, if multiplier is outside
+     *  0.000001 to 1000000. */
     void setSpeedMultiplier(float multiplier);
 
     /** Sets the tick rate. A no-op, logged as an error, if rate is not
