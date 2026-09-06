@@ -8,43 +8,84 @@
 
   "configurePresets": [
     {
-      "name": "linux-debug",
-      "displayName": "Linux Debug (Ninja)",
+      "name": "base",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-debug",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_CXX_COMPILER_LAUNCHER": "ccache"
+        "CMAKE_CXX_COMPILER_LAUNCHER": "ccache",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
-      "name": "mac-debug",
-      "displayName": "macOS Debug (Ninja)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/mac-debug",
+      "name": "linux",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "macos",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0"
+      }
+    },
+
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug (Ninja)",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux RelWithDebInfo (Ninja)",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "macos-debug",
+      "displayName": "macOS Debug (Ninja)",
+      "inherits": "macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macOS RelWithDebInfo (Ninja)",
+      "inherits": "macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
   ],
 
   "buildPresets": [
-    {
-      "name": "linux-debug",
-      "configurePreset": "linux-debug"
-    },
-    {
-      "name": "mac-debug",
-      "configurePreset": "mac-debug"
-    }
+    { "name": "linux-debug", "configurePreset": "linux-debug" },
+    { "name": "linux-release", "configurePreset": "linux-release" },
+    { "name": "macos-debug", "configurePreset": "macos-debug" },
+    { "name": "macos-release", "configurePreset": "macos-release" }
   ],
 
   "testPresets": [
     {
-      "name": "linux-debug",
-      "configurePreset": "linux-debug",
+      "name": "test-base",
+      "hidden": true,
       "output": {
         "outputOnFailure": true
       },
@@ -52,51 +93,43 @@
         "noTestsAction": "error"
       }
     },
-    {
-      "name": "mac-debug",
-      "configurePreset": "mac-debug",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error"
-      }
-    }
+    { "name": "linux-debug", "inherits": "test-base", "configurePreset": "linux-debug" },
+    { "name": "linux-release", "inherits": "test-base", "configurePreset": "linux-release" },
+    { "name": "macos-debug", "inherits": "test-base", "configurePreset": "macos-debug" },
+    { "name": "macos-release", "inherits": "test-base", "configurePreset": "macos-release" }
   ],
 
   "workflowPresets": [
     {
       "name": "linux-debug",
       "steps": [
-        {
-          "type": "configure",
-          "name": "linux-debug"
-        },
-        {
-          "type": "build",
-          "name": "linux-debug"
-        },
-        {
-          "type": "test",
-          "name": "linux-debug"
-        }
+        { "type": "configure", "name": "linux-debug" },
+        { "type": "build", "name": "linux-debug" },
+        { "type": "test", "name": "linux-debug" }
       ]
     },
     {
-      "name": "mac-debug",
+      "name": "linux-release",
       "steps": [
-        {
-          "type": "configure",
-          "name": "mac-debug"
-        },
-        {
-          "type": "build",
-          "name": "mac-debug"
-        },
-        {
-          "type": "test",
-          "name": "mac-debug"
-        }
+        { "type": "configure", "name": "linux-release" },
+        { "type": "build", "name": "linux-release" },
+        { "type": "test", "name": "linux-release" }
+      ]
+    },
+    {
+      "name": "macos-debug",
+      "steps": [
+        { "type": "configure", "name": "macos-debug" },
+        { "type": "build", "name": "macos-debug" },
+        { "type": "test", "name": "macos-debug" }
+      ]
+    },
+    {
+      "name": "macos-release",
+      "steps": [
+        { "type": "configure", "name": "macos-release" },
+        { "type": "build", "name": "macos-release" },
+        { "type": "test", "name": "macos-release" }
       ]
     }
   ]

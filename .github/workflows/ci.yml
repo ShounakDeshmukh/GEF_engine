@@ -12,9 +12,59 @@ env:
 
 jobs:
   build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-24.04
+            preset: linux-release
+          - name: macOS
+            os: macos-14
+            preset: macos-release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-14 g++-14 unzip \
+            libasound2-dev libpulse-dev libaudio-dev libfribidi-dev libjack-dev \
+            libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev \
+            libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
+            libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev \
+            libthai-dev libusb-1.0-0-dev libpipewire-0.3-dev libwayland-dev \
+            libdecor-0-dev liburing-dev ccache
+
+          curl -fsSL -o /tmp/cmake.tar.gz \
+            "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+          sudo tar -xzf /tmp/cmake.tar.gz -C /opt
+          echo "/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+          curl -fsSL -o /tmp/ninja.zip \
+            "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
+          sudo unzip -oq /tmp/ninja.zip -d /usr/local/bin
+          sudo chmod +x /usr/local/bin/ninja
+
+      - name: Install toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja ccache
+
+      - name: Configure, build, and test
+        run: cmake --workflow --preset ${{ matrix.preset }}
+
+  consumer-smoke-test:
+    name: Consumer smoke test
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install toolchain
         run: |
@@ -39,5 +89,57 @@ jobs:
           sudo unzip -oq /tmp/ninja.zip -d /usr/local/bin
           sudo chmod +x /usr/local/bin/ninja
 
-      - name: Configure, build, and test
-        run: cmake --workflow --preset linux-debug
+      - name: Generate a consumer project
+        run: |
+          mkdir -p /tmp/consumer
+          cat > /tmp/consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.28)
+          project(consumer LANGUAGES CXX)
+
+          include(FetchContent)
+          FetchContent_Declare(
+              engine
+              GIT_REPOSITORY "$ENV{GITHUB_WORKSPACE}"
+              GIT_TAG "$ENV{GITHUB_SHA}"
+              SYSTEM
+          )
+          FetchContent_MakeAvailable(engine)
+
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE engine::engine)
+          EOF
+
+          cat > /tmp/consumer/main.cpp <<'EOF'
+          #include <engine/engine.hpp>
+
+          int main() {
+              engine::log::init();
+              engine::Window window("consumer", 640, 480);
+              engine::Renderer renderer(window);
+              renderer.clear({0, 0, 0, 255});
+              renderer.present();
+              return 0;
+          }
+          EOF
+
+      - name: Configure and build the consumer
+        working-directory: /tmp/consumer
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build build
+
+      - name: Examples and tests must not be built by a consumer
+        working-directory: /tmp/consumer
+        run: |
+          targets=$(cmake --build build --target help | grep -E 'hello_window|hello_entity|engine_tests' || true)
+          if [ -n "$targets" ]; then
+            echo "Consumer tree leaked engine-internal targets:"
+            echo "$targets"
+            exit 1
+          fi
+
+      - name: Optimization flags must be uniform
+        working-directory: /tmp/consumer
+        run: grep -o '\-O[0-9s]' build/compile_commands.json | sort | uniq -c
