@@ -21,6 +21,10 @@ int main() {
     const engine::SpriteSheetId walkerSheet = renderer.createSpriteSheet(
         walkerTexture, engine::SpriteSheetLayout::grid({64.f, 64.f}, 4, 2));
 
+
+    auto font = renderer.loadFont(assetDir + "SuperBouncer.ttf", 32.0);
+
+
     engine::Scene scene;
 
     const engine::EntityId mover = scene.createEntity();
@@ -51,6 +55,12 @@ int main() {
     scene.addShape(walkerLeft, {.size = {64.f, 64.f}});
     scene.addSpriteAnimation(walkerLeft,
                              engine::SpriteAnimation::uniform(walkerSheet, {4, 5, 6, 7}, 0.1f));
+
+
+    const auto textEntity = scene.createEntity();
+
+    scene.transform(textEntity).position =  {100.f, 200.f};
+    scene.addText(textEntity, engine::Text{.val = "Graphic design is my passion", .font = font, .color = {255, 0, 0, 255}});
 
     engine::Clock clock;
     float totalElapsed = 0.f;

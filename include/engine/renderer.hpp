@@ -9,6 +9,7 @@
 
 struct SDL_Renderer;
 struct SDL_Texture;
+struct TTF_Font;
 
 namespace engine {
 
@@ -25,6 +26,9 @@ struct Color {
 
 /** Handle to a texture loaded by Renderer::loadTexture. */
 using TextureId = std::uint32_t;
+
+/** Handle to a texture loaded by Renderer::loadFont. */
+using FontId = std::uint32_t;
 
 /** A sub-region within a texture. origin is the top-left corner, in pixel
  *  coordinates. */
@@ -90,6 +94,12 @@ public:
     /** Presents the frame to the window. */
     void present();
 
+    /** Loads a Font style at the set size */
+    FontId loadFont(const std::string& path, float size);
+
+    /** Draws Text at position (top-left corner) */
+    void drawText(FontId font, const std::string& text, glm::vec2 position, Color color = {255,255,255,255});
+
     /** Returns the current rendering scaling mode. */
     ScalingMode scalingMode() const noexcept;
 
@@ -112,6 +122,9 @@ private:
         TextureId texture;
         std::vector<Rect> frames;
     };
+    struct FontDeleter {
+        void operator()(TTF_Font*) const noexcept;
+    };
 
     static constexpr int referenceWidth_ = 1920;
     static constexpr int referenceHeight_ = 1080;
@@ -119,6 +132,7 @@ private:
     std::unique_ptr<SDL_Renderer, Deleter> renderer_;
     std::vector<std::unique_ptr<SDL_Texture, TextureDeleter>> textures_;
     std::vector<SpriteSheetData> spriteSheets_;
+    std::vector<std::unique_ptr<TTF_Font, FontDeleter>> fonts_;
 
     ScalingMode scalingMode_ = ScalingMode::Constant;
 };

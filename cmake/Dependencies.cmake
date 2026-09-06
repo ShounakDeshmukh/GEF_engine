@@ -96,6 +96,15 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SDL3_image)
 
+# SDL3_TTF for text rendering
+FetchContent_Declare(
+    SDL3_ttf
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+    GIT_TAG release-3.2.2
+)
+
+FetchContent_MakeAvailable(SDL3_ttf)
+
 # Catch2
 if(ENGINE_BUILD_TESTS)
     set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)

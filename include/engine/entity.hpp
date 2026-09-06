@@ -4,6 +4,7 @@
 #include "engine/renderer.hpp"
 
 #include <cstdint>
+#include <string>
 #include <glm/vec2.hpp>
 #include <optional>
 #include <unordered_map>
@@ -37,6 +38,12 @@ struct Shape {
     Color color;
     std::optional<TextureId> texture; // nullopt = solid color; present = textured
     bool tiled = false;               // true = repeat texture across size instead of stretching
+};
+
+struct Text {
+    std::string val;
+    FontId font;
+    Color color{255, 255, 255, 255};
 };
 
 /** Owns every entity and its components. All access goes through a method
@@ -101,6 +108,16 @@ public:
     /** id's SpriteAnimation, or nullptr if it has none. */
     const SpriteAnimation* getSpriteAnimation(EntityId id) const noexcept;
 
+    /** Attaches text to id, or overwrites  */
+    Text& addText(EntityId id, Text text);
+    /** Detaches id's Text component, if exists */
+    void removeText(EntityId id) noexcept;
+    /** id's Text Component, nullptr if doesn't exist */
+    Text* getText(EntityId id) noexcept;
+    /** id's Text Component, nullptr if doesn't exist */
+    const Text* getText(EntityId id) const noexcept;
+
+
     /** All live entities' transforms. */
     const std::unordered_map<EntityId, Transform>& transforms() const noexcept;
     /** All RigidBodies, mutable. */
@@ -111,6 +128,8 @@ public:
     const std::unordered_map<EntityId, Shape>& shapes() const noexcept;
     /** All SpriteAnimations, mutable. */
     std::unordered_map<EntityId, SpriteAnimation>& spriteAnimations() noexcept;
+    /** All Text Components */
+    const std::unordered_map<EntityId, Text>& texts() const noexcept;
 
 private:
     EntityId nextId_ = 1;
@@ -119,6 +138,7 @@ private:
     std::unordered_map<EntityId, Collider> colliders_;
     std::unordered_map<EntityId, Shape> shapes_;
     std::unordered_map<EntityId, SpriteAnimation> spriteAnimations_;
+    std::unordered_map<EntityId, Text> texts_;
 };
 
 } // namespace engine

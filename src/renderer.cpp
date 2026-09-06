@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <stdexcept>
 #include <utility>
 
@@ -31,9 +32,17 @@ void Renderer::TextureDeleter::operator()(SDL_Texture* texture) const noexcept {
     SDL_DestroyTexture(texture);
 }
 
+void Renderer::FontDeleter::operator()(TTF_Font* font) const noexcept {
+    TTF_CloseFont(font);
+}
+
+
 Renderer::Renderer(Window& window)
     : renderer_(SDL_CreateRenderer(window.nativeHandle(), nullptr)) {
     if (!renderer_) {
+        throw std::runtime_error(SDL_GetError());
+    }
+    if (!TTF_Init()) {
         throw std::runtime_error(SDL_GetError());
     }
 }
@@ -67,6 +76,17 @@ TextureId Renderer::loadTexture(const std::string& path) {
     return static_cast<TextureId>(textures_.size() - 1);
 }
 
+FontId Renderer::loadFont(const std::string& path, float size) {
+    TTF_Font* font = TTF_OpenFont(path.c_str(), size);
+
+    if (!font) {
+        throw std::runtime_error(SDL_GetError());
+    }
+
+    fonts_.emplace_back(font);
+    return static_cast<FontId>(fonts_.size() - 1);
+}
+
 SpriteSheetId Renderer::createSpriteSheet(TextureId texture, SpriteSheetLayout layout) {
     static_cast<void>(textures_.at(texture));
     spriteSheets_.push_back({texture, std::move(layout.frames)});
@@ -92,6 +112,7 @@ void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size
 }
 
 void Renderer::drawEntities(const Scene& scene) {
+    //Render shapes/sprites/spriteSheets
     for (const auto& [id, shape] : scene.shapes()) {
         const Transform& transform = scene.transform(id);
         const glm::vec2 size = shape.size * transform.scale;
@@ -106,6 +127,35 @@ void Renderer::drawEntities(const Scene& scene) {
             fillRect(transform.position, size, shape.color);
         }
     }
+
+    //Render Text
+    for (const auto& [id, text] : scene.texts()) {
+        const Transform& transform = scene.transform(id);
+
+        drawText(text.font, text.val, transform.position, text.color);
+    }
+
+}
+
+void Renderer::drawText(FontId font, const std::string& text, glm::vec2 position, Color color) {
+    TTF_Font* fontHandle = fonts_.at(font).get();
+    SDL_Color sdlColor {color.r, color.g, color.b, color.a};
+
+    SDL_Surface* surface = TTF_RenderText_Blended(fontHandle, text.c_str(), text.size(), sdlColor);
+
+    if(!surface) {throw std::runtime_error(SDL_GetError());}
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_.get(), surface);
+
+    if(!texture) {SDL_DestroySurface(surface); throw std::runtime_error(SDL_GetError());}
+
+    const SDL_FRect dest{position.x, position.y, static_cast<float>(surface->w), static_cast<float>(surface->h)};
+
+    SDL_DestroySurface(surface);
+
+    SDL_RenderTexture(renderer_.get(), texture, nullptr, &dest);
+
+    SDL_DestroyTexture(texture);
 }
 
 void Renderer::present() {
