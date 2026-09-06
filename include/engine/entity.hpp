@@ -2,6 +2,7 @@
 
 #include "engine/animation.hpp"
 #include "engine/renderer.hpp"
+#include "engine/renderTypes.hpp"
 
 #include <cstdint>
 #include <string>
@@ -11,9 +12,6 @@
 
 namespace engine {
 
-/** Opaque handle to an entity. Values are assigned by Scene::createEntity() and are
- *  never reused for the lifetime of a Scene. */
-using EntityId = std::uint32_t;
 
 /** Position and scale of an entity. position is the top-left corner,
  *  matching SDL_FRect; there is no center-origin conversion. */
@@ -108,7 +106,7 @@ public:
     /** id's SpriteAnimation, or nullptr if it has none. */
     const SpriteAnimation* getSpriteAnimation(EntityId id) const noexcept;
 
-    /** Attaches text to id, or overwrites  */
+    /** Attaches text to id, or overwrites existing text */
     Text& addText(EntityId id, Text text);
     /** Detaches id's Text component, if exists */
     void removeText(EntityId id) noexcept;

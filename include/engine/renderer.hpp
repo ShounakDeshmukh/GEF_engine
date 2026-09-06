@@ -6,6 +6,9 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <unordered_map>
+
+#include "engine/renderTypes.hpp"
 
 struct SDL_Renderer;
 struct SDL_Texture;
@@ -15,20 +18,7 @@ namespace engine {
 
 class Window;
 class Scene;
-
-/** RGBA color, 0-255 per channel. */
-struct Color {
-    std::uint8_t r = 0;
-    std::uint8_t g = 0;
-    std::uint8_t b = 0;
-    std::uint8_t a = 255;
-};
-
-/** Handle to a texture loaded by Renderer::loadTexture. */
-using TextureId = std::uint32_t;
-
-/** Handle to a texture loaded by Renderer::loadFont. */
-using FontId = std::uint32_t;
+struct Text;
 
 /** A sub-region within a texture. origin is the top-left corner, in pixel
  *  coordinates. */
@@ -98,7 +88,7 @@ public:
     FontId loadFont(const std::string& path, float size);
 
     /** Draws Text at position (top-left corner) */
-    void drawText(FontId font, const std::string& text, glm::vec2 position, Color color = {255,255,255,255});
+    void drawText(FontId font, const Text& text, glm::vec2 position);
 
     /** Returns the current rendering scaling mode. */
     ScalingMode scalingMode() const noexcept;
@@ -126,6 +116,15 @@ private:
         void operator()(TTF_Font*) const noexcept;
     };
 
+    struct TextCacheData {
+        FontId font;
+        std::string val;
+        Color color;
+        std::unique_ptr<SDL_Texture, TextureDeleter> texture;
+        glm::vec2 size;
+    };
+
+
     static constexpr int referenceWidth_ = 1920;
     static constexpr int referenceHeight_ = 1080;
 
@@ -133,6 +132,9 @@ private:
     std::vector<std::unique_ptr<SDL_Texture, TextureDeleter>> textures_;
     std::vector<SpriteSheetData> spriteSheets_;
     std::vector<std::unique_ptr<TTF_Font, FontDeleter>> fonts_;
+
+    void rebuildTextCache(EntityId id, const Text& text);
+    std::unordered_map<EntityId, TextCacheData> textCache_;
 
     ScalingMode scalingMode_ = ScalingMode::Constant;
 };

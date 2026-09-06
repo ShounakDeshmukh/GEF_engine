@@ -47,7 +47,12 @@ Renderer::Renderer(Window& window)
     }
 }
 
-Renderer::~Renderer() = default;
+Renderer::~Renderer() {
+    textCache_.clear();
+    textures_.clear();
+    fonts_.clear();
+    TTF_Quit();
+}
 Renderer::Renderer(Renderer&&) noexcept = default;
 Renderer& Renderer::operator=(Renderer&&) noexcept = default;
 
@@ -132,31 +137,60 @@ void Renderer::drawEntities(const Scene& scene) {
     for (const auto& [id, text] : scene.texts()) {
         const Transform& transform = scene.transform(id);
 
-        drawText(text.font, text.val, transform.position, text.color);
+        drawText(id, text, transform.position);
     }
 
 }
 
-void Renderer::drawText(FontId font, const std::string& text, glm::vec2 position, Color color) {
-    TTF_Font* fontHandle = fonts_.at(font).get();
-    SDL_Color sdlColor {color.r, color.g, color.b, color.a};
+void Renderer::drawText(EntityId id, const Text& text, glm::vec2 position) {
 
-    SDL_Surface* surface = TTF_RenderText_Blended(fontHandle, text.c_str(), text.size(), sdlColor);
+    auto it = textCache_.find(id);
+
+    const bool isUpdateNeeded = it == textCache_.end() || //doesn't exist
+                                it->second.font != text.font ||
+                                it->second.val != text.val ||
+                                it->second.color.r != text.color.r ||
+                                it->second.color.g != text.color.g ||
+                                it->second.color.b != text.color.b ||
+                                it->second.color.a != text.color.a;
+
+    if (isUpdateNeeded) {
+        rebuildTextCache(id, text);
+        it = textCache_.find(id);
+    }
+
+    const TextCacheData& data = it->second;
+
+
+    const SDL_FRect dest{position.x, position.y, data.size.x, data.size.y};
+
+    SDL_RenderTexture(renderer_.get(), data.texture.get(), nullptr, &dest);
+
+}
+
+
+void Renderer::rebuildTextCache(EntityId id, const Text& text) {
+    TTF_Font* fontHandle = fonts_.at(text.font).get();
+    SDL_Color sdlColor {text.color.r, text.color.g, text.color.b, text.color.a};
+
+    SDL_Surface* surface = TTF_RenderText_Blended(fontHandle, text.val.c_str(), text.val.size(), sdlColor);
 
     if(!surface) {throw std::runtime_error(SDL_GetError());}
 
+    //fine that its a raw pointer, only unique ptr points to it after function ends
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_.get(), surface);
 
     if(!texture) {SDL_DestroySurface(surface); throw std::runtime_error(SDL_GetError());}
 
-    const SDL_FRect dest{position.x, position.y, static_cast<float>(surface->w), static_cast<float>(surface->h)};
+    TextCacheData textData{.font = text.font, .val = text.val, .color = text.color, 
+        .texture = std::unique_ptr<SDL_Texture, TextureDeleter>(texture), 
+        .size = {static_cast<float>(surface->w), static_cast<float>(surface->h)}};
 
     SDL_DestroySurface(surface);
 
-    SDL_RenderTexture(renderer_.get(), texture, nullptr, &dest);
-
-    SDL_DestroyTexture(texture);
+    textCache_.insert_or_assign(id, std::move(textData));
 }
+
 
 void Renderer::present() {
     SDL_RenderPresent(renderer_.get());
