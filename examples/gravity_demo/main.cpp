@@ -29,22 +29,27 @@ int main() {
     scene.addRigidBody(orb);
 
     engine::PhysicsSystem physics(980.f);
-    engine::Clock clock;
+
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    engine::Stepper sim(gameTime);
 
     while (!window.shouldClose()) {
         window.pollEvents();
-        clock.tick();
 
-        const float deltaSeconds = clock.deltaSeconds();
+        sim.beginFrame();
+        while (sim.step()) {
+            const float stepSeconds = gameTime.tickSeconds();
 
-        engine::advanceAnimations(scene, deltaSeconds);
+            engine::advanceAnimations(scene, stepSeconds);
 
-        physics.step(scene, deltaSeconds);
+            physics.step(scene, stepSeconds);
 
-        engine::Transform& transform = scene.transform(orb);
-        if (transform.position.y > static_cast<float>(windowHeight)) {
-            transform.position = {orbX, topStart};
-            scene.getRigidBody(orb)->velocity = {};
+            engine::Transform& transform = scene.transform(orb);
+            if (transform.position.y > static_cast<float>(windowHeight)) {
+                transform.position = {orbX, topStart};
+                scene.getRigidBody(orb)->velocity = {};
+            }
         }
 
         renderer.clear({0, 0, 0, 255});

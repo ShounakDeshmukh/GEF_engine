@@ -15,7 +15,7 @@ add_library(engine STATIC
     src/renderer.cpp
     src/log.cpp
     src/entity.cpp
-    src/clock.cpp
+    src/timeline.cpp
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
