@@ -1,6 +1,6 @@
 #pragma once
 
-#include <format>
+#include <fmt/format.h>
 #include <string>
 #include <utility>
 
@@ -20,24 +20,24 @@ void warn(const ::std::string& message);
 /** Logs a message at error level. */
 void error(const ::std::string& message);
 
-/** Logs a std::format-style message at debug level. */
-template <typename... Args> void debug(std::format_string<Args...> fmt, Args&&... args) {
-    debug(std::format(fmt, std::forward<Args>(args)...));
+/** Logs a fmt::format-style message at debug level. */
+template <typename... Args> void debug(fmt::format_string<Args...> fmt, Args&&... args) {
+    debug(fmt::format(fmt, std::forward<Args>(args)...));
 }
 
-/** Logs a std::format-style message at info level. */
-template <typename... Args> void info(std::format_string<Args...> fmt, Args&&... args) {
-    info(std::format(fmt, std::forward<Args>(args)...));
+/** Logs a fmt::format-style message at info level. */
+template <typename... Args> void info(fmt::format_string<Args...> fmt, Args&&... args) {
+    info(fmt::format(fmt, std::forward<Args>(args)...));
 }
 
-/** Logs a std::format-style message at warn level. */
-template <typename... Args> void warn(std::format_string<Args...> fmt, Args&&... args) {
-    warn(std::format(fmt, std::forward<Args>(args)...));
+/** Logs a fmt::format-style message at warn level. */
+template <typename... Args> void warn(fmt::format_string<Args...> fmt, Args&&... args) {
+    warn(fmt::format(fmt, std::forward<Args>(args)...));
 }
 
-/** Logs a std::format-style message at error level. */
-template <typename... Args> void error(std::format_string<Args...> fmt, Args&&... args) {
-    error(std::format(fmt, std::forward<Args>(args)...));
+/** Logs a fmt::format-style message at error level. */
+template <typename... Args> void error(fmt::format_string<Args...> fmt, Args&&... args) {
+    error(fmt::format(fmt, std::forward<Args>(args)...));
 }
 
 } // namespace engine::log
