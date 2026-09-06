@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <unordered_map>
+#include <utility>
 
 namespace engine {
 
@@ -42,6 +43,7 @@ void Scene::destroyEntity(EntityId id) noexcept {
     colliders_.erase(id);
     shapes_.erase(id);
     spriteAnimations_.erase(id);
+    texts_.erase(id);
 }
 
 bool Scene::hasEntity(EntityId id) const noexcept {
@@ -130,6 +132,22 @@ const SpriteAnimation* Scene::getSpriteAnimation(EntityId id) const noexcept {
     return getComponent(spriteAnimations_, id);
 }
 
+Text& Scene::addText(EntityId id, Text text) {
+    return addComponent(texts_, id, std::move(text), hasEntity(id), "Scene::addText: unknown EntityId");
+}
+
+void Scene::removeText(EntityId id) noexcept {
+    texts_.erase(id);
+}
+
+Text* Scene::getText(EntityId id) noexcept {
+    return getComponent(texts_, id);
+}
+
+const Text* Scene::getText(EntityId id) const noexcept {
+    return getComponent(texts_, id);
+}
+
 const std::unordered_map<EntityId, Transform>& Scene::transforms() const noexcept {
     return transforms_;
 }
@@ -148,6 +166,10 @@ const std::unordered_map<EntityId, Shape>& Scene::shapes() const noexcept {
 
 std::unordered_map<EntityId, SpriteAnimation>& Scene::spriteAnimations() noexcept {
     return spriteAnimations_;
+}
+
+const std::unordered_map<EntityId, Text>& Scene::texts() const noexcept {
+    return texts_;
 }
 
 } // namespace engine

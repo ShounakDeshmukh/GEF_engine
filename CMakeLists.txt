@@ -35,6 +35,7 @@ target_link_libraries(engine
     PRIVATE
         SDL3::SDL3
         SDL3_image::SDL3_image
+        SDL3_ttf::SDL3_ttf
         spdlog::spdlog
 )
 
