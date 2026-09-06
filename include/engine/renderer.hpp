@@ -90,6 +90,9 @@ public:
     /** Draws Text at position (top-left corner) */
     void drawText(FontId font, const Text& text, glm::vec2 position);
 
+    /** Deletes cached Text textures, needed when changing scenes */
+    void clearTextCache(){textCache_.clear();}
+
     /** Returns the current rendering scaling mode. */
     ScalingMode scalingMode() const noexcept;
 
