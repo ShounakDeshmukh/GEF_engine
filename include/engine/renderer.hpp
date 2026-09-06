@@ -87,8 +87,12 @@ public:
     /** Loads a Font style at the set size */
     FontId loadFont(const std::string& path, float size);
 
-    /** Draws Text at position (top-left corner) */
-    void drawText(FontId font, const Text& text, glm::vec2 position);
+    /** Draws Text at position (top-left corner), check against cache based on id */
+    void drawText(EntityId id, const Text& text, glm::vec2 position);
+
+
+    /** Deletes cached texture associated with a Text Entity based on EntityId */
+    void deleteCachedText(EntityId id){textCache_.erase(id);}
 
     /** Deletes cached Text textures, needed when changing scenes */
     void clearTextCache(){textCache_.clear();}
