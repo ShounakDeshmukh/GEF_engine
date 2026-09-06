@@ -27,28 +27,28 @@ int main() {
     scene.addShape(collisionDetector, {.size = {32.f, 32.f}, .color = {255, 255, 0, 255}});
     scene.addCollider(collisionDetector, {.size = {32.f, 32.f}});
 
-
-    engine::Clock clock;
-    float totalElapsed = 0.f;
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    engine::Stepper sim(gameTime);
 
     while (!window.shouldClose()) {
         window.pollEvents();
-        clock.tick();
-        totalElapsed += clock.deltaSeconds();
 
-        scene.transform(mover).position.x = 944.f + 400.f * std::sin(totalElapsed);
-        scene.transform(mover2).position.x = 900.f + 300.f * std::sin(totalElapsed);
-        engine::advanceAnimations(scene, clock.deltaSeconds());
+        sim.beginFrame();
+        while (sim.step()) {
+            const float stepSeconds = gameTime.tickSeconds();
+            const float elapsed = static_cast<float>(sim.tickIndex()) * stepSeconds;
 
-        if(physics.isCollision(scene, mover, mover2))
-        {
-            scene.getShape(collisionDetector)->color = {255, 0, 0, 255};
+            scene.transform(mover).position.x = 944.f + 400.f * std::sin(elapsed);
+            scene.transform(mover2).position.x = 900.f + 300.f * std::sin(elapsed);
+            engine::advanceAnimations(scene, stepSeconds);
+
+            if (physics.isCollision(scene, mover, mover2)) {
+                scene.getShape(collisionDetector)->color = {255, 0, 0, 255};
+            } else {
+                scene.getShape(collisionDetector)->color = {0, 0, 255, 255};
+            }
         }
-        else
-        {
-            scene.getShape(collisionDetector)->color = {0, 0, 255, 255};
-        }
-
 
         renderer.clear({0, 0, 255, 255});
         renderer.drawEntities(scene);

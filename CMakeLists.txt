@@ -15,7 +15,7 @@ add_library(engine STATIC
     src/renderer.cpp
     src/log.cpp
     src/entity.cpp
-    src/clock.cpp
+    src/timeline.cpp
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
@@ -31,6 +31,7 @@ target_include_directories(engine
 target_link_libraries(engine
     PUBLIC
         glm::glm
+        fmt::fmt
     PRIVATE
         SDL3::SDL3
         SDL3_image::SDL3_image
