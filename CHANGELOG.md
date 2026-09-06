@@ -31,6 +31,10 @@ First tagged release. Consuming repos should pin `GIT_TAG v0.1.0` instead of `ma
 - macOS support: `macos-debug` / `macos-release` presets and a macOS CI leg.
 - A configure-time warning when a consuming project has no `CMAKE_BUILD_TYPE`,
   since that silently compiles SDL3 and its vendored dependencies at `-O0`.
+- The `format` and `docs` targets are now defined only when Deadlock is the
+  top-level project, so they cannot collide with a consuming project's targets.
+- MIT `LICENSE`. The repository previously had no license file, which left it
+  all-rights-reserved by default.
 
 ### Known issues
 
