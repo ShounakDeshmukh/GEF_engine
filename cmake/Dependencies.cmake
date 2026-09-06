@@ -103,6 +103,8 @@ FetchContent_Declare(
     GIT_TAG release-3.2.2
 )
 
+set(SDL3TTF_VENDORED ON CACHE BOOL "" FORCE)
+
 FetchContent_MakeAvailable(SDL3_ttf)
 
 # Catch2
