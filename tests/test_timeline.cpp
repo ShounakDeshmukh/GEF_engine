@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <engine/timeline.hpp>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 TEST_CASE("Timeline::now counts exactly 60 ticks per source second at 60 ticks per second",
@@ -343,4 +344,22 @@ TEST_CASE("Stepper stops stepping while its Timeline is paused", "[timeline][ste
 
     REQUIRE_FALSE(stepper.step());
     REQUIRE(stepper.tickIndex() == 0);
+}
+
+TEST_CASE("Timeline is neither copyable nor movable", "[timeline]") {
+    STATIC_REQUIRE_FALSE(std::is_copy_constructible_v<engine::Timeline>);
+    STATIC_REQUIRE_FALSE(std::is_copy_assignable_v<engine::Timeline>);
+    STATIC_REQUIRE_FALSE(std::is_move_constructible_v<engine::Timeline>);
+    STATIC_REQUIRE_FALSE(std::is_move_assignable_v<engine::Timeline>);
+}
+
+TEST_CASE("Timeline::now stays exact after decades of uptime at a near-unity speed", "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline realTime(&micros);
+    engine::Timeline gameTime(realTime, 1'000'000);
+
+    gameTime.setSpeedMultiplier(0.999999f);
+    micros = 1'000'000'000'000'000; // ~31 years, enough to overflow an unsplit multiply
+
+    REQUIRE(gameTime.now() == 999'999'000'000'000);
 }

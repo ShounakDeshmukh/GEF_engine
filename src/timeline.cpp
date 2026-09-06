@@ -18,6 +18,20 @@ constexpr double minSpeedMultiplier = 1.0 / speedScale;
 // Bounds multiplier * speedScale at 1e12
 constexpr double maxSpeedMultiplier = 1'000'000.0;
 
+struct Elapsed {
+    std::int64_t ticks;
+    std::int64_t remainder;
+};
+
+// elapsed grows without bound as uptime does, so the source ticks are divided down before being
+// scaled: elapsed * num would overflow on a long-running fast timeline, whereas the intermediates
+// here are bounded by the tick rate and speed.
+Elapsed scaleElapsed(std::int64_t elapsed, std::int64_t remainder, std::int64_t num,
+                     std::int64_t den) noexcept {
+    const std::int64_t part = remainder + (elapsed % den) * num;
+    return {(elapsed / den) * num + part / den, part % den};
+}
+
 std::int64_t steadyMicroseconds() noexcept {
     return std::chrono::duration_cast<std::chrono::microseconds>(
                std::chrono::steady_clock::now().time_since_epoch())
@@ -50,7 +64,8 @@ std::int64_t Timeline::now() const noexcept {
     if (paused_) {
         return bankedTicks_;
     }
-    return bankedTicks_ + (remainder_ + (sourceNow() - sourceStart_) * rateNum_) / rateDen_;
+    const Elapsed scaled = scaleElapsed(sourceNow() - sourceStart_, remainder_, rateNum_, rateDen_);
+    return bankedTicks_ + scaled.ticks;
 }
 
 float Timeline::tickSeconds() const noexcept {
@@ -118,10 +133,10 @@ bool Timeline::paused() const noexcept {
 void Timeline::bank() noexcept {
     const std::int64_t sourceTicks = sourceNow();
     const std::int64_t elapsed = paused_ ? 0 : sourceTicks - sourceStart_;
-    const std::int64_t total = remainder_ + elapsed * rateNum_;
+    const Elapsed scaled = scaleElapsed(elapsed, remainder_, rateNum_, rateDen_);
 
-    bankedTicks_ += total / rateDen_;
-    remainder_ = total % rateDen_;
+    bankedTicks_ += scaled.ticks;
+    remainder_ = scaled.remainder;
     sourceStart_ = sourceTicks;
 }
 

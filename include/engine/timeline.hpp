@@ -33,6 +33,14 @@ public:
      *  the same as a second of real time. source must outlive this Timeline. */
     Timeline(const Timeline& source, std::int64_t ticksPerSecond);
 
+    /** Timelines are non-relocatable: a derived Timeline holds a pointer to
+     *  its source, so copying or moving one would leave its children reading a
+     *  dead source. */
+    Timeline(const Timeline&) = delete;
+    Timeline& operator=(const Timeline&) = delete;
+    Timeline(Timeline&&) = delete;
+    Timeline& operator=(Timeline&&) = delete;
+
     /** Ticks elapsed on this timeline. Monotonic. */
     std::int64_t now() const noexcept;
 

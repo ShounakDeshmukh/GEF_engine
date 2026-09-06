@@ -59,16 +59,19 @@ int main() {
     while (!window.shouldClose()) {
         window.pollEvents();
 
+        const float stepSeconds = gameTime.tickSeconds();
+        const bool moveUp = input.isKeyPressed(engine::SC::SDL_SCANCODE_W);
+        const bool moveDown = input.isKeyPressed(engine::SC::SDL_SCANCODE_S);
+
         sim.beginFrame();
         while (sim.step()) {
-            const float stepSeconds = gameTime.tickSeconds();
             const float elapsed = static_cast<float>(sim.tickIndex()) * stepSeconds;
 
             scene.transform(mover).position.x = 944.f + 400.f * std::sin(elapsed);
-            if (input.isKeyPressed(engine::SC::SDL_SCANCODE_W)) {
+            if (moveUp) {
                 scene.transform(mover).position.y -= 100 * stepSeconds;
             }
-            if (input.isKeyPressed(engine::SC::SDL_SCANCODE_S)) {
+            if (moveDown) {
                 scene.transform(mover).position.y += 100 * stepSeconds;
             }
 
