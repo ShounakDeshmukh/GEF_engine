@@ -86,7 +86,7 @@ namespace engine {
         }
         catch (...)
         {
-            std::cerr << "failed to bind to connection" << std::endl;
+            std::cerr << "failed to connect to connection" << std::endl;
         }
     }
 
@@ -109,5 +109,93 @@ namespace engine {
         std::string reply_str(static_cast<char*>(reply.data()), reply.size());
         std::cout << "Received reply from server: " << reply_str << std::endl;
     }
+
+
+
+    publisher::publisher(std::string connectionString)
+    {
+        connection_ = std::make_unique<connectionManager>(zmq::socket_type::pub);
+        try {
+            connection_->sck.bind(connectionString);
+        }
+        catch (...)
+        {
+            std::cerr << "failed to bind to connection" << std::endl;
+        }
+    }
+
+    publisher::~publisher()
+    {
+        connection_->sck.close();
+        connection_->ctx.close();
+    }
+
+
+    void publisher::publish()
+    {
+        int count = 0;
+        while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+            std::string update = "Message #" + std::to_string(count);
+        count = ++count;
+            zmq::message_t message(update.size());
+            memcpy(message.data(), update.data(), update.size());
+            connection_->sck.send(message, zmq::send_flags::none);
+            std::cout << "Published: " << update << std::endl;
+        }
+    }
+
+    void publisher::publish(std::string input)
+    {
+            zmq::message_t message(input.size());
+            memcpy(message.data(), input.data(), input.size());
+            connection_->sck.send(message, zmq::send_flags::none);
+            std::cout << "Published: " << input << std::endl;
+    }
+
+
+
+
+    subscriber::subscriber(std::string connectionString)
+    {
+        connection_ = std::make_unique<connectionManager>(zmq::socket_type::sub);
+        try {
+            connection_->sck.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+            connection_->sck.connect(connectionString);
+        }
+        catch (...)
+        {
+            std::cerr << "failed to conect to connection" << std::endl;
+        }
+    }
+
+    subscriber::~subscriber()
+    {
+        connection_->sck.close();
+        connection_->ctx.close();
+    }
+
+    void subscriber::listen()
+    {
+        std::cout << "Subscribed to updates...\n";
+        while (true) {
+            zmq::message_t update;
+            connection_->sck.recv(update, zmq::recv_flags::none);
+            std::string update_str(static_cast<char*>(update.data()), update.size());
+            std::cout << "Received: " << update_str << std::endl;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
 
 }

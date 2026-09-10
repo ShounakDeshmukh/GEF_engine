@@ -35,7 +35,32 @@ namespace engine {
         ~responseHandler();
 
         void run();
+        
         void run(std::function<std::string(std::string)> func);
+
+        private:
+        std::unique_ptr<connectionManager> connection_;
+    };
+
+    class publisher {
+        public:
+        publisher(std::string connectionString);
+        ~publisher();
+
+        void publish();
+        void publish(std::string input);
+
+        private:
+        std::unique_ptr<connectionManager> connection_;
+    };
+
+    class subscriber {
+        public:
+        subscriber(std::string connectionString);
+        ~subscriber();
+
+        void listen();
+
 
         private:
         std::unique_ptr<connectionManager> connection_;
