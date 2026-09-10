@@ -8,6 +8,6 @@ int main() {
 
     reqHand.send("testing 123");
     reqHand.send("Hello World!");
-    reqHand.send("weirdd");
+    reqHand.send("MAGIC STRING");
     
 }

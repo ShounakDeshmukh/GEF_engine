@@ -3,6 +3,8 @@
 #include <string>
 #include <memory>
 
+#include <functional>
+
 namespace engine {
 
     class tester{
@@ -33,6 +35,7 @@ namespace engine {
         ~responseHandler();
 
         void run();
+        void run(std::function<std::string(std::string)> func);
 
         private:
         std::unique_ptr<connectionManager> connection_;

@@ -43,7 +43,6 @@ namespace engine {
         connection_->ctx.close();
     }
 
-
     void responseHandler::run()
     {
         while (true) {
@@ -53,7 +52,24 @@ namespace engine {
             std::string request_str(static_cast<char*>(request.data()), request.size());
             std::cout << "Received request from client: " << request_str << std::endl;
 
-            std::string reply_str = "Hello Client: you sent" + request_str;
+            std::string reply_str = "Hello Client: you sent " + request_str;
+            zmq::message_t reply(reply_str.size());
+            memcpy(reply.data(), reply_str.data(), reply_str.size());
+            connection_->sck.send(reply, zmq::send_flags::none);
+        }
+    }
+
+
+    void responseHandler::run(std::function<std::string(std::string)> func)
+    {
+        while (true) {
+            zmq::message_t request;
+            connection_->sck.recv(request, zmq::recv_flags::none);
+
+            std::string request_str(static_cast<char*>(request.data()), request.size());
+            // std::cout << "Received request from client: " << request_str << std::endl;
+
+            std::string reply_str = func(request_str); //"Hello Client: you sent" + request_str;
             zmq::message_t reply(reply_str.size());
             memcpy(reply.data(), reply_str.data(), reply_str.size());
             connection_->sck.send(reply, zmq::send_flags::none);
