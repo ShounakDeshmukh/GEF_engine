@@ -12,3 +12,4 @@
 #include "engine/renderer.hpp"
 #include "engine/timeline.hpp"
 #include "engine/window.hpp"
+#include "engine/networking.hpp"
