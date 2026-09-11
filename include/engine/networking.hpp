@@ -50,8 +50,18 @@ namespace engine {
         void publish();
         void publish(std::string input);
 
+        template <typename T> 
+        void publish(const T& data)
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "requires a trivially copyable datatype");
+            send(&data, sizeof(T));
+        } 
+
         private:
         std::unique_ptr<connectionManager> connection_;
+
+        void send(const void* data, std::size_t size);
+
     };
 
     class subscriber {
@@ -61,9 +71,27 @@ namespace engine {
 
         void listen();
 
+        template<typename T>
+        T listenT()
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "requires a trivially copyable datatype");
+            T result{};
+            try {
+                receive(&result, sizeof(T));
+            } catch (...)
+            {
+                throw std::runtime_error("Received malformed message");
+            }
+
+            return result;
+        }
 
         private:
         std::unique_ptr<connectionManager> connection_;
+
+        void receive(void* data, std::size_t size);
+
+
     };
 
 

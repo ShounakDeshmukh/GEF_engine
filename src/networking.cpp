@@ -153,6 +153,10 @@ namespace engine {
             std::cout << "Published: " << input << std::endl;
     }
 
+    void publisher::send(const void* data, std::size_t size)
+    {
+        connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
+    }
 
 
 
@@ -160,12 +164,12 @@ namespace engine {
     {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::sub);
         try {
-            connection_->sck.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+            connection_->sck.set(zmq::sockopt::subscribe, "");
             connection_->sck.connect(connectionString);
         }
         catch (...)
         {
-            std::cerr << "failed to conect to connection" << std::endl;
+            std::cerr << "failed to connect to connection" << std::endl;
         }
     }
 
@@ -186,6 +190,20 @@ namespace engine {
         }
     }
 
+    void subscriber::receive(void* data, std::size_t size)
+    {
+        zmq::message_t message;
+        std::cout << "here1" << std::endl;
+
+        auto result = connection_->sck.recv(message, zmq::recv_flags::none);
+        std::cout << "here2" << std::endl;
+
+        if(!result && message.size() == size)
+        {
+            throw std::runtime_error("Received malformed message");
+        }
+        std::memcpy(data, message.data(), size);
+    }
 
 
 

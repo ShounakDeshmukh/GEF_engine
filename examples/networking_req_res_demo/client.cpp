@@ -1,6 +1,16 @@
 #include <engine/engine.hpp>
 #include <cstring>
 
+#include <engine/entity.hpp>
+
+#include <iostream> 
+
+std::ostream& operator<<(std::ostream& out, const engine::Transform& t)
+{
+    out << "x: " << t.position.x << " y: " << t.position.y << std::endl;
+    return out;
+}
+
 
 int main(int argv, char* argc[]) {
     
@@ -8,7 +18,12 @@ int main(int argv, char* argc[]) {
     {
         auto sub = engine::subscriber("tcp://localhost:5555");
 
-        sub.listen();
+        while(true)
+        {
+            auto i = sub.listenT<engine::Transform>();
+            std::cout << "testing " << std::endl;
+            std::cout << i;
+        }
 
     }
     else
