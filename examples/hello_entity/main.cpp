@@ -66,6 +66,8 @@ int main() {
     engine::Timeline gameTime(realTime, 60);
     engine::Stepper sim(gameTime);
 
+    input.startInputHandlingThread(10);
+
     while (!window.shouldClose()) {
         window.pollEvents();
 

@@ -17,6 +17,7 @@ int main() {
 
     while (!window.shouldClose()) {
         window.pollEvents();
+        input.updateInputState();
 
         const bool scalingKeyIsPressed = input.isKeyPressed(engine::SC::SDL_SCANCODE_P);
         if (scalingKeyIsPressed && !scalingKeyWasPressed) {
