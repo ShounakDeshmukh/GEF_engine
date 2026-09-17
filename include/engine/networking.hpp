@@ -44,7 +44,7 @@ namespace engine {
 
     class publisher {
         public:
-        publisher(std::string connectionString);
+        publisher(std::string connectionString, std::string topic = "");
         ~publisher();
 
         void publish();
@@ -62,11 +62,13 @@ namespace engine {
 
         void send(const void* data, std::size_t size);
 
+        const std::string topic_;
+
     };
 
     class subscriber {
         public:
-        subscriber(std::string connectionString);
+        subscriber(std::string connectionString, std::string topic = "");
         ~subscriber();
 
         void listen();

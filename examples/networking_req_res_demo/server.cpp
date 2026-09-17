@@ -8,7 +8,7 @@ int main(int argv, char* argc[]) {
 
     if(argv > 1 && !strcmp(argc[1], "subpub"))
     {
-        auto pub = engine::publisher("tcp://*:5555");
+        auto pub = engine::publisher("tcp://*:5555", "tes2/");
 
         //gives time for subscriber to connect
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));

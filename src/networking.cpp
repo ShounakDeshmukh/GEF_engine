@@ -112,7 +112,8 @@ namespace engine {
 
 
 
-    publisher::publisher(std::string connectionString)
+    publisher::publisher(std::string connectionString, std::string topic):
+     topic_(topic)
     {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::pub);
         try {
@@ -155,16 +156,17 @@ namespace engine {
 
     void publisher::send(const void* data, std::size_t size)
     {
+        connection_->sck.send(zmq::buffer(topic_), zmq::send_flags::sndmore);
         connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
     }
 
 
 
-    subscriber::subscriber(std::string connectionString)
+    subscriber::subscriber(std::string connectionString, std::string topic)
     {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::sub);
         try {
-            connection_->sck.set(zmq::sockopt::subscribe, "");
+            connection_->sck.set(zmq::sockopt::subscribe, topic);
             connection_->sck.connect(connectionString);
         }
         catch (...)

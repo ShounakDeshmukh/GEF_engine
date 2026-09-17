@@ -16,7 +16,7 @@ int main(int argv, char* argc[]) {
     
     if(argv > 1 && !strcmp(argc[1], "subpub"))
     {
-        auto sub = engine::subscriber("tcp://localhost:5555");
+        auto sub = engine::subscriber("tcp://localhost:5555", "test/");
 
         while(true)
         {
