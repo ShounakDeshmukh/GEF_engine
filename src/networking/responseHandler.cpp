@@ -73,41 +73,18 @@ namespace engine::networking {
         running_.store(false);
     }
 
-    template <typename T, typename U, typename Func>
-    void responseHandler::run(Func&& func)
+    bool responseHandler::receive(void* data, std::size_t size)
     {
-        static_assert(std::is_trivially_copyable_v<T>);
-        static_assert(std::is_trivially_copyable_v<U>);
-
-        if(running_.exchange(true))
-        {
-            std::cerr << "responseHandler already running" << std::endl;
-            return;
-        }
-
-        while(true)
-        {
-            zmq::message_t request;
-            auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
-
-            if(!recvVal) {continue;}
-
-            if(request.size() != sizeof(U))
-            {
-                throw std::runtime_error("Unexpected request size");
-            }
-
-            U requestData {};
-            memcpy(&requestData, request.data(), sizeof(U));
-
-            T replyData = std::invoke(std::forward<Func>(func), requestData);
-            connection_->sck.send(zmq::buffer(&replyData, sizeof(T)), zmq::send_flags::none);
-
-        }
-        running_.store(false);
-
+        zmq::message_t request;
+        auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
+        if (!recvVal || request.size() != size) {return false;}
+        memcpy(data, request.data(), size);
+        return true;
     }
-        
 
+    void responseHandler::send(const void* data, std::size_t size)
+    {
+        connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
+    }
 
 }

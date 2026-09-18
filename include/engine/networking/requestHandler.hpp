@@ -22,11 +22,22 @@ namespace engine::networking {
 
         //** threadsafe. Returns the requested data and an "isValidReply" bool in case of failure*/
         template <typename T, typename U>
-        std::pair<T, bool> send(U msg);
+        std::pair<T, bool> send(U msg)
+        {
+            static_assert(std::is_trivially_copyable_v<T>);
+            static_assert(std::is_trivially_copyable_v<U>);
+
+            T reply {};
+            bool valid = sendAndReceive(&msg, sizeof(U), &reply, sizeof(T));
+            return {reply, valid};
+
+        }
     
         private:
         std::unique_ptr<connectionManager> connection_;
         std::mutex mutex_;
+
+        bool sendAndReceive(void* request, std::size_t reqSize, void* reply, std::size_t repSize);
     
     
     };

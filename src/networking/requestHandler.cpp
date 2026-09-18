@@ -43,34 +43,22 @@ namespace engine::networking
     }
 
 
-    template <typename T, typename U>
-    std::pair<T, bool> requestHandler::send(U msg)
+    bool requestHandler::sendAndReceive(void* request, std::size_t reqSize, void* reply, std::size_t repSize)
     {
-        static_assert(std::is_trivially_copyable_v<T>);
-        static_assert(std::is_trivially_copyable_v<U>);
-        
         std::lock_guard<std::mutex> lock(mutex_);
-
-        T reply {};
-
-        auto sendVal = connection_->sck.send(zmq::buffer(&msg, sizeof(U)), zmq::send_flags::none);
-        if(!sendVal) {return std::pair<T, bool>(reply, false);}
-
+        auto sendVal = connection_->sck.send(zmq::buffer(request, reqSize), zmq::send_flags::none);
+        if(!sendVal) {return false;}
+        
         zmq::message_t replyData;
         auto recvVal = connection_->sck.recv(replyData, zmq::recv_flags::none);
+        if(!recvVal || replyData.size() != repSize) {return false;}
 
-        if(!recvVal) {return std::pair<T, bool>(reply, false);}
+        memcpy(reply, replyData.data(), repSize);
+        return true;
 
-        if(replyData.size() != sizeof(T))
-        {
-            throw std::runtime_error("Unexpected request size");
-        }
-
-        memcpy(&reply, replyData.data(), sizeof(T));
-
-        return std::pair<T, bool>(reply, true);
-        
     }
+    
+
 
 
 }

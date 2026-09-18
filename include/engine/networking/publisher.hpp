@@ -28,7 +28,7 @@ namespace engine::networking {
 
         private:
         std::unique_ptr<connectionManager> connection_;
-        std::mutex mutex_
+        std::mutex mutex_;
 
         void send(const void* data, std::size_t size, std::string topic);
 

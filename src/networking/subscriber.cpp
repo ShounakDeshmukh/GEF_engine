@@ -32,7 +32,7 @@ namespace engine::networking {
         if(running_.exchange(true))
         {
             std::cerr << "subscriber::listen() already running" << std::endl;
-            return;
+            return "";
         }
 
         zmq::message_t topic;
