@@ -4,6 +4,8 @@
 #include <engine/entity.hpp>
 
 #include <iostream> 
+#include <future>
+#include <thread>
 
 std::ostream& operator<<(std::ostream& out, const engine::Transform& t)
 {
@@ -16,19 +18,29 @@ int main(int argv, char* argc[]) {
     
     if(argv > 1 && !strcmp(argc[1], "subpub"))
     {
-        auto sub = engine::subscriber("tcp://localhost:5555", "test/");
+        auto sub = engine::networking::subscriber("tcp://localhost:5555", "test/");
+        auto sub2 = engine::networking::subscriber("tcp://localhost:5555", "heartbeat/");
+
+
+        auto i = std::async(std::launch::async, [&]()
+    {
+        while(true)
+        {
+            auto j = sub2.listen();
+            std::cout << j << std::endl;
+        }
+    });
 
         while(true)
         {
             auto i = sub.listenT<engine::Transform>();
-            std::cout << "testing " << std::endl;
             std::cout << i;
         }
 
     }
     else
     {
-        auto reqHand = engine::requestHandler("tcp://localhost:5555");
+        auto reqHand = engine::networking::requestHandler("tcp://localhost:5555");
     
         reqHand.send("testing 123");
         reqHand.send("Hello World!");

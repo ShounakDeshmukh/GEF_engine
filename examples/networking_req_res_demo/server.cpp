@@ -8,27 +8,23 @@ int main(int argv, char* argc[]) {
 
     if(argv > 1 && !strcmp(argc[1], "subpub"))
     {
-        auto pub = engine::publisher("tcp://*:5555", "tes2/");
+        auto pub = engine::networking::publisher("tcp://*:5555");
 
         //gives time for subscriber to connect
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         engine::Transform boi; 
         boi.position.x = 23;
+        boi.position.y = 43;
 
+        while(true)
+        {
+            pub.publish(boi, "test/");
+            pub.publish("pulse", "heartbeat/");
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        pub.publish(boi);
+        }
 
-        // pub.publish("test message 1");
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        // pub.publish("Hello world");
-        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        // pub.publish("rule of threes");
-        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-
-
-        // pub.publish();
     }
     else
     {
@@ -40,7 +36,7 @@ int main(int argv, char* argc[]) {
             return std::string("Hello Client: you sent") + input;
         };
         
-        auto resHand = engine::responseHandler("tcp://*:5555");
+        auto resHand = engine::networking::responseHandler("tcp://*:5555");
     
         resHand.run(func);
 

@@ -39,7 +39,12 @@ add_library(engine STATIC
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
-    src/networking.cpp
+    src/networking/connectionManager.hpp
+    src/networking/publisher.cpp
+    src/networking/subscriber.cpp
+    src/networking/requestHandler.cpp
+    src/networking/responseHandler.cpp
+    
 )
 add_library(engine::engine ALIAS engine)
 
