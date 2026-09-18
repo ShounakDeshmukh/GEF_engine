@@ -46,7 +46,7 @@ namespace engine::networking {
         connection_->sck.recv(topic, zmq::recv_flags::none);
         auto result = connection_->sck.recv(message, zmq::recv_flags::none);
 
-        if(!result && message.size() == size)
+        if(!result || message.size() != size)
         {
             throw std::runtime_error("Received malformed message");
         }

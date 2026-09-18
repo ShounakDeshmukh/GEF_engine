@@ -77,7 +77,7 @@ namespace engine::networking {
             }
 
             U requestData {};
-            memcpy(requestData, request.data(), sizeof(U));
+            memcpy(&requestData, request.data(), sizeof(U));
 
             T replyData = std::invoke(std::forward<Func>(func), requestData);
             connection_->sck.send(zmq::buffer(&replyData, sizeof(T)), zmq::send_flags::none);

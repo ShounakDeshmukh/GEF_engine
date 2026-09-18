@@ -61,7 +61,7 @@ namespace engine::networking
             throw std::runtime_error("Unexpected request size");
         }
 
-        memcpy(replyData.data(), reply, sizeof(T));
+        memcpy(&reply, replyData.data(), sizeof(T));
 
         return std::pair<T, bool>(reply, true);
         
