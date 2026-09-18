@@ -42,9 +42,26 @@ int main(int argv, char* argc[]) {
     {
         auto reqHand = engine::networking::requestHandler("tcp://localhost:5555");
     
-        reqHand.send("testing 123");
-        reqHand.send("Hello World!");
-        reqHand.send("MAGIC STRING");
+        engine::Transform boi; 
+        boi.position.x = 23;
+        boi.position.y = 43;
+
+        auto retVal = reqHand.send<engine::Transform, engine::Transform>(boi);
+
+        if(!retVal.second)
+        {
+            std::cerr << "request failed" << std::endl;
+        }
+        else
+        {    
+            std::cout << "request data " << boi;
+            std::cout << "response data " << retVal.first;
+        }
+
+
+        // reqHand.send("testing 123");
+        // reqHand.send("Hello World!");
+        // reqHand.send("MAGIC STRING");
         
     }
 
