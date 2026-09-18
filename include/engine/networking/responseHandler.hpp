@@ -12,15 +12,19 @@ namespace engine::networking {
     
     class connectionManager;
 
+    /** Server side request-reply handler */
     class responseHandler {
         public:
         responseHandler(std::string connectionString);
         ~responseHandler();
 
+        /** Enforces single thread usage */
         void run();
         
+        /** Enforces single thread usage */
         void run(std::function<std::string(std::string)> func);
 
+        /** Enforces single thread usage */
         template <typename T, typename U, typename Func>
         void run(Func&& func);
 

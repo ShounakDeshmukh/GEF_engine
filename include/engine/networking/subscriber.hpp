@@ -8,14 +8,16 @@ namespace engine::networking {
 
     class connectionManager;
 
-    //Create a subscriber per topic
+    //** Create a subscriber per topic */
     class subscriber {
         public:
         subscriber(std::string connectionString, std::string topic = "");
         ~subscriber();
 
+        /** Enforces single thread usage */
         std::string listen();
 
+        /** Enforces single thread usage */
         template<typename T>
         T listenT()
         {
