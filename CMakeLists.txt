@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.5)
+
+#libzmq
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 project(engine VERSION 0.1.0 LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL)
@@ -35,6 +39,12 @@ add_library(engine STATIC
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
+    src/networking/connectionManager.hpp
+    src/networking/publisher.cpp
+    src/networking/subscriber.cpp
+    src/networking/requestHandler.cpp
+    src/networking/responseHandler.cpp
+    
 )
 add_library(engine::engine ALIAS engine)
 
@@ -57,7 +67,10 @@ target_link_libraries(engine
         SDL3_image::SDL3_image
         SDL3_ttf::SDL3_ttf
         spdlog::spdlog
+        cppzmq
 )
+
+target_link_libraries(cppzmq INTERFACE libzmq)
 
 target_compile_options(engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
