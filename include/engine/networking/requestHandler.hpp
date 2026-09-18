@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <utility>
+#include <mutex>
 
 namespace engine::networking {
 
@@ -23,6 +24,7 @@ namespace engine::networking {
     
         private:
         std::unique_ptr<connectionManager> connection_;
+        std::mutex mutex_;
     
     
     };

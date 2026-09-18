@@ -33,6 +33,7 @@ namespace engine::networking {
 
         private:
         std::unique_ptr<connectionManager> connection_;
+        std::atomic<bool> running_{false};
 
         void receive(void* data, std::size_t size);
 

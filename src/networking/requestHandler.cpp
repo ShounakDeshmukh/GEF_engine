@@ -28,6 +28,9 @@ namespace engine::networking
 
     void requestHandler::send(std::string req_string)
     {
+
+        std::lock_guard<std::mutex> lock(mutex_);
+
         zmq::message_t request(req_string.size());
         memcpy(request.data(),req_string.data(), req_string.size());
         connection_->sck.send(request, zmq::send_flags::none);
@@ -46,6 +49,8 @@ namespace engine::networking
         static_assert(std::is_trivially_copyable_v<T>);
         static_assert(std::is_trivially_copyable_v<U>);
         
+        std::lock_guard<std::mutex> lock(mutex_);
+
         T reply {};
 
         auto sendVal = connection_->sck.send(zmq::buffer(&msg, sizeof(U)), zmq::send_flags::none);

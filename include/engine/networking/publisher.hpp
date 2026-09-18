@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <mutex>
 
 
 namespace engine::networking {
@@ -25,6 +26,7 @@ namespace engine::networking {
 
         private:
         std::unique_ptr<connectionManager> connection_;
+        std::mutex mutex_
 
         void send(const void* data, std::size_t size, std::string topic);
 

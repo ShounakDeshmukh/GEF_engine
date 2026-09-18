@@ -27,6 +27,7 @@ namespace engine::networking {
 
     void publisher::publish(std::string input, std::string topic)
     {
+            std::lock_guard<std::mutex> lock(mutex_);
             zmq::message_t message(input.size());
             memcpy(message.data(), input.data(), input.size());
             connection_->sck.send(zmq::buffer(topic), zmq::send_flags::sndmore);
@@ -36,6 +37,7 @@ namespace engine::networking {
 
     void publisher::send(const void* data, std::size_t size, std::string topic)
     {
+        std::lock_guard<std::mutex> lock(mutex_);
         connection_->sck.send(zmq::buffer(topic), zmq::send_flags::sndmore);
         connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
     }

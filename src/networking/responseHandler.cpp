@@ -28,6 +28,12 @@ namespace engine::networking {
 
     void responseHandler::run()
     {
+        if(running_.exchange(true))
+        {
+            std::cerr << "responseHandler already running" << std::endl;
+            return;
+        }
+
         while (true) {
             zmq::message_t request;
             connection_->sck.recv(request, zmq::recv_flags::none);
@@ -40,11 +46,19 @@ namespace engine::networking {
             memcpy(reply.data(), reply_str.data(), reply_str.size());
             connection_->sck.send(reply, zmq::send_flags::none);
         }
+        running_.store(false);
     }
 
 
     void responseHandler::run(std::function<std::string(std::string)> func)
     {
+
+        if(running_.exchange(true))
+        {
+            std::cerr << "responseHandler already running" << std::endl;
+            return;
+        }
+
         while (true) {
             zmq::message_t request;
             connection_->sck.recv(request, zmq::recv_flags::none);
@@ -56,6 +70,7 @@ namespace engine::networking {
             memcpy(reply.data(), reply_str.data(), reply_str.size());
             connection_->sck.send(reply, zmq::send_flags::none);
         }
+        running_.store(false);
     }
 
     template <typename T, typename U, typename Func>
@@ -63,6 +78,12 @@ namespace engine::networking {
     {
         static_assert(std::is_trivially_copyable_v<T>);
         static_assert(std::is_trivially_copyable_v<U>);
+
+        if(running_.exchange(true))
+        {
+            std::cerr << "responseHandler already running" << std::endl;
+            return;
+        }
 
         while(true)
         {
@@ -83,7 +104,7 @@ namespace engine::networking {
             connection_->sck.send(zmq::buffer(&replyData, sizeof(T)), zmq::send_flags::none);
 
         }
-
+        running_.store(false);
 
     }
         

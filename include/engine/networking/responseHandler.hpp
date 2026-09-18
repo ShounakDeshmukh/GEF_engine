@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <functional>
+#include <atomic>
 
 
 namespace engine::networking {
@@ -26,6 +27,7 @@ namespace engine::networking {
 
         private:
         std::unique_ptr<connectionManager> connection_;
+        std::atomic<bool> running_{false};
     };
 
 

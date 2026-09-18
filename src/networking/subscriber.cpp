@@ -29,17 +29,30 @@ namespace engine::networking {
 
     std::string subscriber::listen()
     {
+        if(running_.exchange(true))
+        {
+            std::cerr << "subscriber::listen() already running" << std::endl;
+            return;
+        }
+
         zmq::message_t topic;
         zmq::message_t update;
 
         connection_->sck.recv(topic);
         connection_->sck.recv(update);
         std::string update_str(static_cast<char*>(update.data()), update.size());
+        running_.store(false);
         return update_str;
     }
 
     void subscriber::receive(void* data, std::size_t size)
     {
+        if(running_.exchange(true))
+        {
+            std::cerr << "subscriber::listen() already running" << std::endl;
+            return;
+        }
+
         zmq::message_t topic;
         zmq::message_t message;
 
@@ -51,6 +64,7 @@ namespace engine::networking {
             throw std::runtime_error("Received malformed message");
         }
         std::memcpy(data, message.data(), size);
+        running_.store(false);
     }
 
 }
