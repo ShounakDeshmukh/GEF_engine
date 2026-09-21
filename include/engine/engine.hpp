@@ -6,6 +6,7 @@
 
 #include "engine/animation.hpp"
 #include "engine/entity.hpp"
+#include "engine/ids.hpp"
 #include "engine/inputHandler.hpp"
 #include "engine/log.hpp"
 #include "engine/physics.hpp"

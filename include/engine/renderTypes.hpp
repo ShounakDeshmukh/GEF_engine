@@ -2,11 +2,9 @@
 
 #include <cstdint>
 
-namespace engine {
-    /** Opaque handle to an entity. Values are assigned by Scene::createEntity() and are
-     *  never reused for the lifetime of a Scene. */
-    using EntityId = std::uint32_t;
+#include "engine/ids.hpp"
 
+namespace engine {
     /** Handle to a texture loaded by Renderer::loadTexture. */
     using TextureId = std::uint32_t;
 
