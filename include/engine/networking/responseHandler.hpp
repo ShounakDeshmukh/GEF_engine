@@ -7,6 +7,8 @@
 #include <atomic>
 #include <iostream>
 
+#include "networkShared.hpp"
+
 
 namespace engine::networking {
 
@@ -31,6 +33,7 @@ namespace engine::networking {
         {
             static_assert(std::is_trivially_copyable_v<T>);
             static_assert(std::is_trivially_copyable_v<U>);
+            static_assert(std::is_trivially_copyable_v<ResponsePacket<T>>);
 
             if(running_.exchange(true))
             {
@@ -40,12 +43,30 @@ namespace engine::networking {
             while(true)
             {
                 U requestData {};
-                auto datavalid = receive(&requestData, sizeof(U));
-                if(datavalid)
+                auto status = receive(&requestData, sizeof(U));
+
+                //if no message received, safe to loop
+                if(status == ReceivedStatus::NoMessage){continue;}
+
+                ResponsePacket<T> reply{};
+
+                if(status == ReceivedStatus::InvalidSize)
                 {
-                    T replyData = std::invoke(std::forward<Func>(func), requestData);
-                    send(&replyData, sizeof(T));
+                    reply.errorCode = NetworkError::InvalidRequestSize;
                 }
+                else 
+                {
+                    try
+                    {
+                        reply.data = std::invoke(std::forward<Func>(func), requestData);
+                        reply.errorCode = NetworkError::None;
+                    }
+                    catch (...)
+                    {
+                        reply.errorCode = NetworkError::HandlerError;
+                    }
+                }
+                send(&reply, sizeof(reply));
             }
             running_.store(false);
 
@@ -57,7 +78,7 @@ namespace engine::networking {
         std::atomic<bool> running_{false};
 
         /** returns true if data is properly received */
-        bool receive(void* data, std::size_t size);
+        ReceivedStatus receive(void* data, std::size_t size);
         void send(const void* data, std::size_t size);
 
 

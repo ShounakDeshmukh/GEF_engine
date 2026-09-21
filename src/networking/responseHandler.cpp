@@ -73,13 +73,15 @@ namespace engine::networking {
         running_.store(false);
     }
 
-    bool responseHandler::receive(void* data, std::size_t size)
+    ReceivedStatus responseHandler::receive(void* data, std::size_t size)
     {
         zmq::message_t request;
         auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
-        if (!recvVal || request.size() != size) {return false;}
+
+        if(!recvVal) {return ReceivedStatus::NoMessage;}
+        if(request.size() != size) {return ReceivedStatus::InvalidSize;}
         memcpy(data, request.data(), size);
-        return true;
+        return ReceivedStatus::Success;
     }
 
     void responseHandler::send(const void* data, std::size_t size)

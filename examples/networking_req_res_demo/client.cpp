@@ -46,9 +46,11 @@ int main(int argv, char* argc[]) {
         boi.position.x = 23;
         boi.position.y = 43;
 
+        
         auto retVal = reqHand.send<engine::Transform, engine::Transform>(boi);
-
-        if(!retVal.second)
+        
+        
+        if(retVal.second != engine::networking::NetworkError::None)
         {
             std::cerr << "request failed" << std::endl;
         }

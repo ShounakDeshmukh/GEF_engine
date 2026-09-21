@@ -5,6 +5,8 @@
 #include <utility>
 #include <mutex>
 
+#include "networkShared.hpp"
+
 namespace engine::networking {
 
     
@@ -22,14 +24,16 @@ namespace engine::networking {
 
         //** threadsafe. Returns the requested data and an "isValidReply" bool in case of failure*/
         template <typename T, typename U>
-        std::pair<T, bool> send(U msg)
+        std::pair<T, NetworkError> send(U msg)
         {
             static_assert(std::is_trivially_copyable_v<T>);
             static_assert(std::is_trivially_copyable_v<U>);
+            static_assert(std::is_trivially_copyable_v<ResponsePacket<T>>);
 
-            T reply {};
-            bool valid = sendAndReceive(&msg, sizeof(U), &reply, sizeof(T));
-            return {reply, valid};
+            ResponsePacket<T> reply {};
+            bool valid = sendAndReceive(&msg, sizeof(U), &reply, sizeof(reply));
+            if(!valid){reply.errorCode = NetworkError::ReceiveFailed;}
+            return {reply.data, reply.errorCode};
 
         }
     
