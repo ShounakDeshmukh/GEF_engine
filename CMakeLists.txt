@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.28)
 
 #libzmq
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
@@ -67,10 +67,10 @@ target_link_libraries(engine
         SDL3_image::SDL3_image
         SDL3_ttf::SDL3_ttf
         spdlog::spdlog
-        cppzmq
+        cppzmq-static
 )
 
-target_link_libraries(cppzmq INTERFACE libzmq)
+# target_link_libraries(cppzmq INTERFACE libzmq)
 
 target_compile_options(engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
