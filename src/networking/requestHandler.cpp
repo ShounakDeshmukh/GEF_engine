@@ -15,6 +15,7 @@ namespace engine::networking
         catch (...)
         {
             std::cerr << "failed to connect to connection" << std::endl;
+            throw std::runtime_error("Failed to create requestHandler"); 
         }
     }
 
@@ -22,7 +23,6 @@ namespace engine::networking
     requestHandler::~requestHandler()
     {
         connection_->sck.close();
-        connection_->ctx.close();
     }
 
 

@@ -40,7 +40,7 @@ namespace engine::networking {
                 std::cerr << "responseHandler already running" << std::endl;
                 return;
             }
-            while(true)
+            while(!stop_.load())
             {
                 U requestData {};
                 auto status = receive(&requestData, sizeof(U));
@@ -72,10 +72,17 @@ namespace engine::networking {
 
         }
 
+        void stop()
+        {
+            stop_.store(true);
+        }
+
+        void setReceiveTimeout(int milliseconds);
 
         private:
         std::unique_ptr<connectionManager> connection_;
         std::atomic<bool> running_{false};
+        std::atomic<bool> stop_{false};
 
         /** returns true if data is properly received */
         ReceivedStatus receive(void* data, std::size_t size);

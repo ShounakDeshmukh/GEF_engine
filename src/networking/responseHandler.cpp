@@ -16,6 +16,7 @@ namespace engine::networking {
         catch (...)
         {
             std::cerr << "failed to bind to connection" << std::endl;
+            throw std::runtime_error("Failed to create responseHandler"); 
         }
     }
 
@@ -23,7 +24,6 @@ namespace engine::networking {
     responseHandler::~responseHandler()
     {
         connection_->sck.close();
-        connection_->ctx.close();
     }
 
     void responseHandler::run()
@@ -59,7 +59,7 @@ namespace engine::networking {
             return;
         }
 
-        while (true) {
+        while (!stop_.load()) {
             zmq::message_t request;
             connection_->sck.recv(request, zmq::recv_flags::none);
 
@@ -72,6 +72,13 @@ namespace engine::networking {
         }
         running_.store(false);
     }
+
+    void responseHandler::setReceiveTimeout(int milliseconds)
+    {
+        connection_->sck.set(zmq::sockopt::rcvtimeo, milliseconds);
+    }
+
+
 
     ReceivedStatus responseHandler::receive(void* data, std::size_t size)
     {

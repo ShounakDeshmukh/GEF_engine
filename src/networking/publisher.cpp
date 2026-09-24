@@ -16,13 +16,13 @@ namespace engine::networking {
         catch (...)
         {
             std::cerr << "failed to bind to connection" << std::endl;
+            throw std::runtime_error("Failed to create publisher"); 
         }
     }
 
     publisher::~publisher()
     {
         connection_->sck.close();
-        connection_->ctx.close();
     }
 
     void publisher::publish(std::string input, std::string topic)
@@ -32,7 +32,6 @@ namespace engine::networking {
             memcpy(message.data(), input.data(), input.size());
             connection_->sck.send(zmq::buffer(topic), zmq::send_flags::sndmore);
             connection_->sck.send(message, zmq::send_flags::none);
-            std::cout << "Published: " << input << std::endl;
     }
 
     void publisher::send(const void* data, std::size_t size, std::string topic)

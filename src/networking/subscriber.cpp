@@ -18,13 +18,13 @@ namespace engine::networking {
         catch (...)
         {
             std::cerr << "failed to connect to connection" << std::endl;
+            throw std::runtime_error("Failed to create subscriber"); 
         }
     }
 
     subscriber::~subscriber()
     {
         connection_->sck.close();
-        connection_->ctx.close();
     }
 
     std::string subscriber::listen()
