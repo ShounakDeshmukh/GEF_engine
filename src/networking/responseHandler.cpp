@@ -12,6 +12,8 @@ namespace engine::networking {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::rep);
         try {
             connection_->sck.bind(connectionString);
+            auto endpoint = connection_->sck.get(zmq::sockopt::last_endpoint);
+            port_ = std::stoi(endpoint.substr(endpoint.rfind(':') + 1));
         }
         catch (...)
         {

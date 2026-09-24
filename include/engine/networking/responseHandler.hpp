@@ -79,10 +79,14 @@ namespace engine::networking {
 
         void setReceiveTimeout(int milliseconds);
 
+        int port() const {return port_;}
+
         private:
         std::unique_ptr<connectionManager> connection_;
         std::atomic<bool> running_{false};
         std::atomic<bool> stop_{false};
+        int port_{-1};
+
 
         /** returns true if data is properly received */
         ReceivedStatus receive(void* data, std::size_t size);

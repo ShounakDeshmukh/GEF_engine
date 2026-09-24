@@ -1,8 +1,9 @@
+#pragma once
 #include <zmq.hpp>
 
 namespace engine::networking {
 
-    zmq::context_t& getContext() {
+    inline zmq::context_t& getContext() {
         static zmq::context_t context(1);
         return context;
     }
