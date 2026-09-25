@@ -36,7 +36,10 @@ namespace engine::networking {
             return;
         }
 
-        while (true) {
+        RunningGuard guard{running_};
+        stop_.store(false);
+
+        while (!stop_.load()) {
             zmq::message_t request;
             connection_->sck.recv(request, zmq::recv_flags::none);
 
@@ -44,11 +47,8 @@ namespace engine::networking {
             std::cout << "Received request from client: " << request_str << std::endl;
 
             std::string reply_str = "Hello Client: you sent " + request_str;
-            zmq::message_t reply(reply_str.size());
-            memcpy(reply.data(), reply_str.data(), reply_str.size());
-            connection_->sck.send(reply, zmq::send_flags::none);
+            sendRaw(reply_str.data(), reply_str.size(), NetworkError::None);
         }
-        running_.store(false);
     }
 
 
@@ -60,6 +60,9 @@ namespace engine::networking {
             std::cerr << "responseHandler already running" << std::endl;
             return;
         }
+        stop_.store(false);
+
+        RunningGuard guard{running_};
 
         while (!stop_.load()) {
             zmq::message_t request;
@@ -72,7 +75,6 @@ namespace engine::networking {
             memcpy(reply.data(), reply_str.data(), reply_str.size());
             connection_->sck.send(reply, zmq::send_flags::none);
         }
-        running_.store(false);
     }
 
     void responseHandler::setReceiveTimeout(int milliseconds)
@@ -81,8 +83,7 @@ namespace engine::networking {
     }
 
 
-
-    ReceivedStatus responseHandler::receive(void* data, std::size_t size)
+    ReceivedStatus responseHandler::receiveRaw(void* data, std::size_t size)
     {
         zmq::message_t request;
         auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
@@ -93,9 +94,23 @@ namespace engine::networking {
         return ReceivedStatus::Success;
     }
 
-    void responseHandler::send(const void* data, std::size_t size)
+    ReceivedStatus responseHandler::receiveRaw(Bytes& data)
     {
+        zmq::message_t request;
+        auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
+
+        if(!recvVal) {return ReceivedStatus::NoMessage;}
+        data.resize(request.size());
+        memcpy(data.data(), request.data(), request.size());
+        return ReceivedStatus::Success;
+    }
+
+
+    void responseHandler::sendRaw(const void* data, std::size_t size, NetworkError err)
+    {
+        connection_->sck.send(zmq::buffer(&err, sizeof(err)), zmq::send_flags::sndmore);
         connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
     }
+
 
 }

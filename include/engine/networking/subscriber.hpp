@@ -40,6 +40,17 @@ namespace engine::networking {
 
         void receive(void* data, std::size_t size);
 
+        /** RAII for tracking if loop is running */
+        struct RunningGuard
+        {
+            std::atomic_bool& running;
+
+            ~RunningGuard()
+            {
+                running.store(false);
+            }
+        };
+
 
     };
 

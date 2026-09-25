@@ -35,13 +35,14 @@ namespace engine::networking {
             return "";
         }
 
+        RunningGuard guard{running_};
+        
         zmq::message_t topic;
         zmq::message_t update;
 
         connection_->sck.recv(topic);
         connection_->sck.recv(update);
         std::string update_str(static_cast<char*>(update.data()), update.size());
-        running_.store(false);
         return update_str;
     }
 
@@ -52,6 +53,8 @@ namespace engine::networking {
             std::cerr << "subscriber::listen() already running" << std::endl;
             return;
         }
+
+        RunningGuard guard{running_};
 
         zmq::message_t topic;
         zmq::message_t message;
@@ -64,7 +67,6 @@ namespace engine::networking {
             throw std::runtime_error("Received malformed message");
         }
         std::memcpy(data, message.data(), size);
-        running_.store(false);
     }
 
 }
