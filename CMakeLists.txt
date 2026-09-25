@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
 
-#libzmq
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 project(engine VERSION 0.1.0 LANGUAGES CXX)
 
@@ -69,8 +67,6 @@ target_link_libraries(engine
         spdlog::spdlog
         cppzmq-static
 )
-
-# target_link_libraries(cppzmq INTERFACE libzmq)
 
 target_compile_options(engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
