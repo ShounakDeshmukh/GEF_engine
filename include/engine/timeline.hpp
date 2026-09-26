@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace engine {
 
@@ -33,6 +34,8 @@ public:
      *  the same as a second of real time. source must outlive this Timeline. */
     Timeline(const Timeline& source, std::int64_t ticksPerSecond);
 
+    ~Timeline();
+
     /** Timelines are non-relocatable: a derived Timeline holds a pointer to
      *  its source, so copying or moving one would leave its children reading a
      *  dead source. */
@@ -62,7 +65,7 @@ public:
     void setSpeedMultiplier(float multiplier);
 
     /** Sets the tick rate. A no-op, logged as an error, if rate is not
-     *  positive. */
+     *  positive. Derived timelines keep their own rate. */
     void setTicksPerSecond(std::int64_t rate);
 
     /** Freezes now(). A no-op if already paused. */
@@ -72,7 +75,8 @@ public:
     bool paused() const noexcept;
 
 private:
-    void bank() noexcept;
+    void bank() noexcept { bankAt(sourceNow()); }
+    void bankAt(std::int64_t sourceTicks) noexcept;
     void recomputeRate(std::int64_t previousRateDen) noexcept;
     std::int64_t sourceNow() const noexcept;
 
@@ -85,6 +89,7 @@ private:
     std::int64_t ticksPerSecond_ = 1'000'000;
     std::int64_t speedNum_ = 1, speedDen_ = 1; // speed as an exact fraction
     bool paused_ = false;
+    mutable std::vector<Timeline*> children_;
 };
 
 /** Turns elapsed Timeline time into a whole number of fixed-size steps.

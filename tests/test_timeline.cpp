@@ -363,3 +363,70 @@ TEST_CASE("Timeline::now stays exact after decades of uptime at a near-unity spe
 
     REQUIRE(gameTime.now() == 999'999'000'000'000);
 }
+
+TEST_CASE("Timeline derived from a source keeps its rate when the source changes tick rate",
+          "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline realTime(&micros);
+    engine::Timeline gameTime(realTime, 60);
+    engine::Timeline child(gameTime, 60);
+
+    micros = 1'000'000;
+    REQUIRE(child.now() == 60);
+
+    gameTime.setTicksPerSecond(120);
+    micros = 2'000'000;
+
+    REQUIRE(gameTime.now() == 180);
+    REQUIRE(child.now() == 120);
+}
+
+TEST_CASE("Timeline grandchild is unaffected by a grandparent tick-rate change", "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline realTime(&micros);
+    engine::Timeline gameTime(realTime, 60);
+    engine::Timeline child(gameTime, 30);
+    engine::Timeline grandchild(child, 30);
+
+    micros = 1'000'000;
+    REQUIRE(child.now() == 30);
+    REQUIRE(grandchild.now() == 30);
+
+    gameTime.setTicksPerSecond(120);
+    micros = 2'000'000;
+
+    REQUIRE(child.now() == 60);
+    REQUIRE(grandchild.now() == 60);
+}
+
+TEST_CASE("Timeline destroyed before its source unregisters from it", "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline realTime(&micros);
+    engine::Timeline gameTime(realTime, 60);
+
+    {
+        engine::Timeline child(gameTime, 60);
+    }
+    gameTime.setTicksPerSecond(120);
+    micros = 1'000'000;
+
+    REQUIRE(gameTime.now() == 120);
+}
+
+TEST_CASE("Timeline source tick-rate change while paused keeps the child frozen", "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline realTime(&micros);
+    engine::Timeline gameTime(realTime, 60);
+    engine::Timeline child(gameTime, 60);
+
+    micros = 1'000'000;
+    gameTime.pause();
+    gameTime.setTicksPerSecond(120);
+
+    micros = 3'000'000;
+    REQUIRE(child.now() == 60);
+
+    gameTime.unpause();
+    micros = 4'000'000;
+    REQUIRE(child.now() == 120);
+}
