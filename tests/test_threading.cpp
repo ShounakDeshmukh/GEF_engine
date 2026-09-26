@@ -2,6 +2,8 @@
 #include <chrono>
 #include <cstdint>
 #include <deque>
+#include <engine/inputHandler.hpp>
+#include <engine/keyboardState.hpp>
 #include <engine/threading/latestValue.hpp>
 #include <engine/threading/threadSafeQueue.hpp>
 #include <thread>
@@ -143,4 +145,45 @@ TEST_CASE("ThreadSafeQueue keeps per-producer order with several producers", "[t
 
     REQUIRE(received == producerCount * perProducer);
     REQUIRE(ordered);
+}
+
+TEST_CASE("KeyboardState defaults to every key released", "[threading][input]") {
+    const engine::KeyboardState snapshot;
+
+    REQUIRE_FALSE(snapshot.isKeyPressed(engine::SC::SDL_SCANCODE_W));
+}
+
+TEST_CASE("KeyboardState::setKey presses only that key", "[threading][input]") {
+    engine::KeyboardState snapshot;
+
+    snapshot.setKey(engine::SC::SDL_SCANCODE_W, true);
+
+    REQUIRE(snapshot.isKeyPressed(engine::SC::SDL_SCANCODE_W));
+    REQUIRE_FALSE(snapshot.isKeyPressed(engine::SC::SDL_SCANCODE_A));
+}
+
+TEST_CASE("KeyboardState ignores the boundary scancode", "[threading][input]") {
+    const auto boundary = static_cast<engine::SC::SDL_Scancode>(engine::SC::SDL_SCANCODE_COUNT);
+    engine::KeyboardState snapshot;
+
+    snapshot.setKey(boundary, true);
+
+    REQUIRE_FALSE(snapshot.isKeyPressed(boundary));
+    REQUIRE(snapshot == engine::KeyboardState{});
+}
+
+TEST_CASE("KeyboardState::justPressed is true only on the edge", "[threading][input]") {
+    engine::KeyboardState released;
+    engine::KeyboardState pressed;
+    pressed.setKey(engine::SC::SDL_SCANCODE_W, true);
+
+    REQUIRE(pressed.justPressed(engine::SC::SDL_SCANCODE_W, released));
+    REQUIRE_FALSE(pressed.justPressed(engine::SC::SDL_SCANCODE_W, pressed));
+}
+
+TEST_CASE("KeyboardState::capture with no simulated input has every key released",
+          "[threading][input]") {
+    engine::InputHandler handler;
+
+    REQUIRE(engine::KeyboardState::capture(handler) == engine::KeyboardState{});
 }

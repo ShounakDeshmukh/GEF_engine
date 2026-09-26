@@ -32,6 +32,7 @@ add_library(engine STATIC
     src/log.cpp
     src/entity.cpp
     src/timeline.cpp
+    src/keyboardState.cpp
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
