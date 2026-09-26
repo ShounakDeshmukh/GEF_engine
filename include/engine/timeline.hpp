@@ -23,11 +23,11 @@ public:
     /** Root timeline running on chrono::steady_clock at one tick per microsecond. */
     Timeline();
 
-    /** Root timeline running on an external microsecond counter, for driving
-     *  time from a source other than the system clock, such as a recorded
-     *  replay. The counter must outlive this Timeline and must never
-     *  decrease. */
-    explicit Timeline(const std::int64_t* microsecondCounter);
+    /** Root timeline on an external counter advancing unitsPerSecond per
+     *  second, such as a replay clock or a loop counter (unitsPerSecond = 60
+     *  counts iterations). The counter must outlive this Timeline and must
+     *  never decrease. */
+    explicit Timeline(const std::int64_t* counter, std::int64_t unitsPerSecond = 1'000'000);
 
     /** Timeline running on source, ticking ticksPerSecond times per second of
      *  simulated time. Under a source that is slowed or sped up, that is not
@@ -87,7 +87,8 @@ private:
     std::int64_t remainder_ = 0;             // part of a tick, in rateDen_ units
     std::int64_t rateNum_ = 1, rateDen_ = 1; // our ticks per source tick
     std::int64_t ticksPerSecond_ = 1'000'000;
-    std::int64_t speedNum_ = 1, speedDen_ = 1; // speed as an exact fraction
+    std::int64_t rootUnitsPerSecond_ = 1'000'000; // root only
+    std::int64_t speedNum_ = 1, speedDen_ = 1;    // speed as an exact fraction
     bool paused_ = false;
     mutable std::vector<Timeline*> children_;
 };

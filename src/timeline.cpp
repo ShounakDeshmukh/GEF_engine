@@ -46,7 +46,14 @@ Timeline::Timeline() {
     sourceStart_ = sourceNow();
 }
 
-Timeline::Timeline(const std::int64_t* microsecondCounter) : counter_(microsecondCounter) {
+Timeline::Timeline(const std::int64_t* counter, std::int64_t unitsPerSecond) : counter_(counter) {
+    if (unitsPerSecond <= 0) {
+        log::error("Timeline counter rate must be positive, got {}; using 1000000", unitsPerSecond);
+        unitsPerSecond = 1'000'000;
+    }
+
+    rootUnitsPerSecond_ = unitsPerSecond;
+    ticksPerSecond_ = unitsPerSecond;
     sourceStart_ = sourceNow();
 }
 
@@ -160,7 +167,8 @@ void Timeline::bankAt(std::int64_t sourceTicks) noexcept {
 }
 
 void Timeline::recomputeRate(std::int64_t previousRateDen) noexcept {
-    const std::int64_t sourceRate = source_ != nullptr ? source_->ticksPerSecond_ : ticksPerSecond_;
+    const std::int64_t sourceRate =
+        source_ != nullptr ? source_->ticksPerSecond_ : rootUnitsPerSecond_;
     const std::int64_t rawNum = ticksPerSecond_ * speedNum_;
     const std::int64_t rawDen = sourceRate * speedDen_;
     const std::int64_t divisor = std::gcd(rawNum, rawDen);

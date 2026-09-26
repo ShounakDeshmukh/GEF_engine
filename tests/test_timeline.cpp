@@ -430,3 +430,36 @@ TEST_CASE("Timeline source tick-rate change while paused keeps the child frozen"
     micros = 4'000'000;
     REQUIRE(child.now() == 120);
 }
+
+TEST_CASE("Timeline::setTicksPerSecond on a root changes its counting rate", "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline realTime(&micros);
+
+    realTime.setTicksPerSecond(60);
+    micros = 1'000'000;
+
+    REQUIRE(realTime.now() == 60);
+    REQUIRE(realTime.tickSeconds() == Catch::Approx(1.f / 60.f));
+}
+
+TEST_CASE("Timeline counter root with unitsPerSecond counts loop iterations", "[timeline]") {
+    std::int64_t frames = 0;
+    engine::Timeline loops(&frames, 60);
+    engine::Timeline half(loops, 30);
+
+    frames = 90;
+
+    REQUIRE(loops.now() == 90);
+    REQUIRE(loops.ticksPerSecond() == 60);
+    REQUIRE(half.now() == 45);
+}
+
+TEST_CASE("Timeline counter root rejects a non-positive unitsPerSecond", "[timeline]") {
+    std::int64_t micros = 0;
+    engine::Timeline bad(&micros, 0);
+
+    micros = 1'000'000;
+
+    REQUIRE(bad.now() == 1'000'000);
+    REQUIRE(bad.ticksPerSecond() == 1'000'000);
+}
