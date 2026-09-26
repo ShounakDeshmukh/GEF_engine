@@ -13,6 +13,9 @@ target_compile_definitions(gravity_demo PRIVATE
     GRAVITY_DEMO_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/hello_entity/assets/"
 )
 
+add_executable(multithread_demo multithread_demo/main.cpp)
+target_link_libraries(multithread_demo PRIVATE engine)
+
 add_executable(collision_demo collision_demo/main.cpp)
 target_link_libraries(collision_demo PRIVATE engine)
 
