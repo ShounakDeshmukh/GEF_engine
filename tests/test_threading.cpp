@@ -399,6 +399,78 @@ TEST_CASE("SimulationThread does not drop time before its first frame", "[thread
     REQUIRE(frame->status.stepsLastFrame == 0);
 }
 
+TEST_CASE("SimulationThread subsystem ticks follow the timeline", "[threading][simulation]") {
+    ManualClock clock;
+    std::vector<TickRecord> subsystemTicks;
+    engine::SimulationThread sim(clock.makeScene(), clock.gameTime, clock.recordTicks());
+    sim.addSubsystemThread("recorder", [&subsystemTicks](const engine::SubsystemContext& ctx) {
+        subsystemTicks.push_back({ctx.tick, ctx.dt});
+    });
+    runFirstFrame(sim);
+
+    clock.us = 50'000;
+    sim.advanceFrame();
+
+    REQUIRE(subsystemTicks.size() == 3);
+    for (std::size_t i = 0; i < subsystemTicks.size(); ++i) {
+        REQUIRE(subsystemTicks[i].tick == static_cast<std::int64_t>(i + 1));
+        REQUIRE(subsystemTicks[i].dt == Catch::Approx(1.f / 60.f));
+    }
+}
+
+TEST_CASE("SimulationThread subsystem output reaches onTick in the same frame",
+          "[threading][simulation]") {
+    ManualClock clock;
+    engine::threading::LatestValue<std::int64_t> subsystemTick;
+    std::int64_t seen = 0;
+    engine::SimulationThread sim(clock.makeScene(), clock.gameTime,
+                                 [&](const engine::TickContext&) {
+                                     if (auto tick = subsystemTick.take()) {
+                                         seen = *tick;
+                                     }
+                                 });
+    sim.addSubsystemThread("publisher", [&subsystemTick](const engine::SubsystemContext& ctx) {
+        subsystemTick.publish(ctx.tick);
+    });
+    runFirstFrame(sim);
+
+    clock.us = 50'000;
+    sim.advanceFrame();
+
+    REQUIRE(seen == 3);
+}
+
+TEST_CASE("SimulationThread::pause freezes subsystems", "[threading][simulation]") {
+    ManualClock clock;
+    int subsystemTicks = 0;
+    engine::SimulationThread sim(clock.makeScene(), clock.gameTime, clock.recordTicks());
+    sim.addSubsystemThread(
+        "counter", [&subsystemTicks](const engine::SubsystemContext&) { ++subsystemTicks; });
+    runFirstFrame(sim);
+
+    sim.pause();
+    sim.advanceFrame();
+    clock.us += 1'000'000;
+    sim.advanceFrame();
+
+    REQUIRE(subsystemTicks == 0);
+}
+
+TEST_CASE("SimulationThread::addSubsystemThread after the first frame is ignored",
+          "[threading][simulation]") {
+    ManualClock clock;
+    int subsystemTicks = 0;
+    engine::SimulationThread sim(clock.makeScene(), clock.gameTime, clock.recordTicks());
+    runFirstFrame(sim);
+
+    sim.addSubsystemThread(
+        "late", [&subsystemTicks](const engine::SubsystemContext&) { ++subsystemTicks; });
+    clock.us += 50'000;
+    sim.advanceFrame();
+
+    REQUIRE(subsystemTicks == 0);
+}
+
 TEST_CASE("SimulationThread ticks on its own thread", "[threading][simulation][live]") {
     engine::Timeline realTime;
     engine::Timeline gameTime(realTime, 60);
@@ -452,6 +524,9 @@ TEST_CASE("SimulationThread::pause while running freezes ticks", "[threading][si
     engine::Timeline realTime;
     engine::Timeline gameTime(realTime, 60);
     engine::SimulationThread sim(engine::Scene{}, gameTime, [](const engine::TickContext&) {});
+    std::atomic<int> subsystemTicks = 0;
+    sim.addSubsystemThread(
+        "counter", [&subsystemTicks](const engine::SubsystemContext&) { ++subsystemTicks; });
     sim.start();
 
     sim.pause();
@@ -464,14 +539,17 @@ TEST_CASE("SimulationThread::pause while running freezes ticks", "[threading][si
         }
         return false;
     });
+    const int pausedSubsystemTicks = subsystemTicks;
     std::this_thread::sleep_for(200ms);
     const auto later = sim.takeRenderFrame();
+    const int laterSubsystemTicks = subsystemTicks;
     sim.stop();
 
     REQUIRE(paused);
     if (later) {
         REQUIRE(later->status.tick == pausedTick);
     }
+    REQUIRE(laterSubsystemTicks == pausedSubsystemTicks);
 }
 
 TEST_CASE("SimulationThread captures an exception from the sim thread",
@@ -481,6 +559,55 @@ TEST_CASE("SimulationThread captures an exception from the sim thread",
     engine::SimulationThread sim(engine::Scene{}, gameTime, [](const engine::TickContext& ctx) {
         if (ctx.tick >= 5) {
             throw std::runtime_error("tick failed");
+        }
+    });
+
+    sim.start();
+    const bool stopped = pollUntil([&sim] { return !sim.running(); });
+
+    REQUIRE(stopped);
+    const std::exception_ptr failure = sim.failure();
+    REQUIRE(failure != nullptr);
+    REQUIRE_THROWS_AS(std::rethrow_exception(failure), std::runtime_error);
+    REQUIRE_NOTHROW(sim.stop());
+}
+
+TEST_CASE("SimulationThread runs each subsystem on its own thread",
+          "[threading][simulation][live]") {
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    std::atomic<std::thread::id> tickThread;
+    std::atomic<std::thread::id> subsystemThread;
+    engine::SimulationThread sim(
+        engine::Scene{}, gameTime,
+        [&tickThread](const engine::TickContext&) { tickThread = std::this_thread::get_id(); });
+    sim.addSubsystemThread("recorder", [&subsystemThread](const engine::SubsystemContext&) {
+        subsystemThread = std::this_thread::get_id();
+    });
+
+    sim.start();
+    const bool reached = pollUntil([&sim] {
+        const auto frame = sim.takeRenderFrame();
+        return frame && frame->status.tick >= 10;
+    });
+    sim.stop();
+
+    REQUIRE(reached);
+    const std::thread::id testThread = std::this_thread::get_id();
+    REQUIRE(subsystemThread.load() != std::thread::id{});
+    REQUIRE(tickThread.load() != testThread);
+    REQUIRE(subsystemThread.load() != testThread);
+    REQUIRE(subsystemThread.load() != tickThread.load());
+}
+
+TEST_CASE("SimulationThread captures an exception from a subsystem thread",
+          "[threading][simulation][live]") {
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    engine::SimulationThread sim(engine::Scene{}, gameTime, [](const engine::TickContext&) {});
+    sim.addSubsystemThread("thrower", [](const engine::SubsystemContext& ctx) {
+        if (ctx.tick >= 5) {
+            throw std::runtime_error("subsystem failed");
         }
     });
 
