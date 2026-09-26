@@ -33,6 +33,7 @@ add_library(engine STATIC
     src/entity.cpp
     src/timeline.cpp
     src/keyboardState.cpp
+    src/simulationThread.cpp
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
@@ -64,6 +65,9 @@ target_compile_options(engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>
 )
+
+find_package(Threads REQUIRED)
+target_link_libraries(engine PUBLIC Threads::Threads)
 
 if(ENGINE_BUILD_EXAMPLES)
     add_subdirectory(examples)
