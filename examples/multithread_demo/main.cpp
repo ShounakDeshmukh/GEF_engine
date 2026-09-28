@@ -1,3 +1,13 @@
+// Threads: main (events, input, render), sim (player, physics, collision), world subsystem
+// (moving platform), fakeNetThread (logs per-tick player state; rate follows game speed).
+//
+// Controls:
+//   A / D      move left / right
+//   Space      jump
+//   P          toggle pause
+//   1 / 2 / 3  speed 0.5 / 1.0 / 2.0
+// The top-left bar's width shows speed; it turns red while paused.
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
