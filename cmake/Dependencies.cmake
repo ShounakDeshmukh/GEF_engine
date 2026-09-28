@@ -170,4 +170,6 @@ if(ENGINE_BUILD_TESTS)
     )
 
     FetchContent_MakeAvailable(Catch2)
+    # Tests use C++20; build Catch2 with it as well so its std::byte stringifier exists.
+    target_compile_features(Catch2 PRIVATE cxx_std_20)
 endif()

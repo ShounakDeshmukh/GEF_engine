@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <engine/networking/protocol.hpp>
@@ -21,7 +22,9 @@ TEST_CASE("network packet round-trips its header and payload", "[networking][pro
     REQUIRE(decoded->sender == packet.sender);
     REQUIRE(decoded->sequence == packet.sequence);
     REQUIRE(decoded->serverTick == packet.serverTick);
-    REQUIRE(decoded->payload == packet.payload);
+    REQUIRE(decoded->payload.size() == packet.payload.size());
+    REQUIRE(std::equal(decoded->payload.begin(), decoded->payload.end(),
+                       packet.payload.begin(), packet.payload.end()));
 }
 
 TEST_CASE("network packet decoder rejects malformed input", "[networking][protocol]") {
