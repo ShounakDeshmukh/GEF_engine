@@ -99,8 +99,7 @@ public:
     bool running() const noexcept;
 
     /** Runs one frame of every subsystem, then of the sim, on the calling thread; exceptions
-     *  propagate. A
-     *  no-op returning false, logged as an error, while running. */
+     *  propagate. A no-op returning false, logged as an error, while running. */
     bool advanceFrame();
 
     void submitKeyboard(const KeyboardState& keyboard);

@@ -62,6 +62,9 @@ bool SimulationThread::advanceFrame() {
         log::error("SimulationThread::advanceFrame called while running; ignoring");
         return false;
     }
+    // After a failure running_ drops as soon as the sim exits, while subsystems may still be
+    // finishing a callback.
+    joinAll();
     started_ = true;
     for (Subsystem& subsystem : subsystems_) {
         runSubsystemFrame(subsystem);

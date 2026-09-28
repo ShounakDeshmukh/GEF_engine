@@ -620,3 +620,32 @@ TEST_CASE("SimulationThread captures an exception from a subsystem thread",
     REQUIRE_THROWS_AS(std::rethrow_exception(failure), std::runtime_error);
     REQUIRE_NOTHROW(sim.stop());
 }
+
+TEST_CASE("SimulationThread::advanceFrame after a failure waits for subsystem threads",
+          "[threading][simulation][live]") {
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    std::atomic<bool> thrown = false;
+    std::atomic<int> inside = 0;
+    std::atomic<bool> overlapped = false;
+    // The sim fails once the slow subsystem has fallen behind, so it still has ticks due.
+    engine::SimulationThread sim(engine::Scene{}, gameTime,
+                                 [&thrown](const engine::TickContext& ctx) {
+                                     if (ctx.tick >= 10 && !thrown.exchange(true)) {
+                                         throw std::runtime_error("tick failed");
+                                     }
+                                 });
+    sim.addSubsystemThread("slow", [&](const engine::SubsystemContext&) {
+        if (++inside > 1) {
+            overlapped = true;
+        }
+        std::this_thread::sleep_for(100ms);
+        --inside;
+    });
+
+    sim.start();
+    REQUIRE(pollUntil([&sim] { return !sim.running(); }));
+    sim.advanceFrame();
+
+    REQUIRE_FALSE(overlapped);
+}
