@@ -649,3 +649,29 @@ TEST_CASE("SimulationThread::advanceFrame after a failure waits for subsystem th
 
     REQUIRE_FALSE(overlapped);
 }
+
+TEST_CASE("SimulationThread::pause stops a subsystem mid-batch", "[threading][simulation][live]") {
+    engine::Timeline realTime;
+    engine::Timeline gameTime(realTime, 60);
+    std::atomic<int> subsystemTicks = 0;
+    engine::SimulationThread sim(engine::Scene{}, gameTime, [](const engine::TickContext&) {});
+    // Slower than the tick rate, so the subsystem always has a batch of sampled ticks in flight.
+    sim.addSubsystemThread("slow", [&subsystemTicks](const engine::SubsystemContext&) {
+        std::this_thread::sleep_for(30ms);
+        ++subsystemTicks;
+    });
+    sim.start();
+    REQUIRE(pollUntil([&subsystemTicks] { return subsystemTicks >= 3; }));
+
+    sim.pause();
+    REQUIRE(pollUntil([&sim] {
+        const auto frame = sim.takeRenderFrame();
+        return frame && frame->status.paused;
+    }));
+    const int ticksAtPause = subsystemTicks;
+    std::this_thread::sleep_for(300ms);
+    const int ticksLater = subsystemTicks;
+    sim.stop();
+
+    REQUIRE(ticksLater == ticksAtPause);
+}

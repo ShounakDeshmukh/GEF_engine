@@ -66,6 +66,8 @@ struct RenderFrame {
  *  - A subsystem thread must never touch the Scene or any Timeline; it exchanges data with the
  *    sim only through LatestValue or ThreadSafeQueue. It steps gameTime independently, so its
  *    last tick can differ from the sim's by up to one frame: tag its output with the tick.
+ *  - A subsystem callback must never block waiting on the sim thread: a pause or any posted
+ *    task waits for the callback in progress. Pausing discards subsystem ticks not yet run.
  *  - For networking, push per-tick outbound state from onTick into a ThreadSafeQueue the net
  *    thread drains, so its rate follows Timeline speed. Drain inbound messages at the start of
  *    onTick, or post() them.
@@ -147,7 +149,8 @@ private:
     // Fixed once started_, so subsystem threads can hold references into it.
     std::vector<Subsystem> subsystems_;
     bool started_ = false;
-    // Exclusive for posted tasks; shared for Stepper reads. Never held around onTick or fn.
+    // Exclusive for posted tasks; shared for Stepper reads and around each subsystem callback.
+    // Never held around onTick.
     std::shared_mutex timelineMutex_;
 
     std::thread thread_;

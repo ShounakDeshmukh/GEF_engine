@@ -172,7 +172,17 @@ int SimulationThread::runSubsystemFrame(Subsystem& subsystem) {
         dt = gameTime_.tickSeconds();
     }
     int steps = 0;
-    while (subsystem.stepper->step()) {
+    while (true) {
+        // Held per tick so a posted pause waits for the callback in progress, then sees none after.
+        std::shared_lock lock(timelineMutex_);
+        if (gameTime_.paused()) {
+            // Ticks sampled or due before the pause would otherwise run while paused.
+            subsystem.stepper.emplace(gameTime_, config_.maxStepsPerFrame);
+            break;
+        }
+        if (!subsystem.stepper->step()) {
+            break;
+        }
         subsystem.fn(SubsystemContext{subsystem.stepper->tickIndex(), dt});
         ++steps;
     }
