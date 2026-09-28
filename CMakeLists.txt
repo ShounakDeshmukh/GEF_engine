@@ -35,6 +35,8 @@ add_library(engine STATIC
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
+    src/networking_protocol.cpp
+    src/networking_session.cpp
 )
 add_library(engine::engine ALIAS engine)
 
@@ -57,6 +59,7 @@ target_link_libraries(engine
         SDL3_image::SDL3_image
         SDL3_ttf::SDL3_ttf
         spdlog::spdlog
+        ${ENGINE_ZMQ_TARGET}
 )
 
 target_compile_options(engine PRIVATE

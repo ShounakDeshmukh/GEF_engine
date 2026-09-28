@@ -13,3 +13,5 @@
 #include "engine/renderer.hpp"
 #include "engine/timeline.hpp"
 #include "engine/window.hpp"
+#include "engine/networking/protocol.hpp"
+#include "engine/networking/session.hpp"

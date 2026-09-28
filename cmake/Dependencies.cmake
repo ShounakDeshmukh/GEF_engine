@@ -1,4 +1,30 @@
 include(FetchContent)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(ENGINE_LIBZMQ QUIET IMPORTED_TARGET libzmq)
+endif()
+if(TARGET PkgConfig::ENGINE_LIBZMQ)
+    set(ENGINE_ZMQ_TARGET PkgConfig::ENGINE_LIBZMQ)
+else()
+    # Build locally when the development package is unavailable.
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+    set(BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(BUILD_STATIC ON CACHE BOOL "" FORCE)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(WITH_DOCS OFF CACHE BOOL "" FORCE)
+    set(WITH_PERF_TOOL OFF CACHE BOOL "" FORCE)
+    set(ENABLE_CPACK OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        libzmq
+        GIT_REPOSITORY https://github.com/zeromq/libzmq.git
+        GIT_TAG v4.3.5
+        GIT_SHALLOW TRUE
+        SYSTEM
+        EXCLUDE_FROM_ALL
+    )
+    FetchContent_MakeAvailable(libzmq)
+    set(ENGINE_ZMQ_TARGET libzmq-static)
+endif()
 
 set(FETCHCONTENT_QUIET OFF)
 
