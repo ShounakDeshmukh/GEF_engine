@@ -1,3 +1,4 @@
+import re
 import socket
 import subprocess
 import sys
@@ -31,13 +32,29 @@ try:
         assert process.returncode == 0, error
         print(output.strip())
         outputs.append(output)
-    assert all("world=1" in output for output in outputs), outputs
-    assert all("moving=1" in output and "sharedClock=1" in output
-               for output in outputs), outputs
-    assert "seen=2,3," in outputs[0], outputs
-    assert "seen=1,3," in outputs[1], outputs
-    assert "seen=1,2," in outputs[2], outputs
-    assert "left=2," in outputs[0], outputs
+    results = []
+    for output in outputs:
+        match = re.fullmatch(
+            r"self=(\d+) world=(\d+) moving=(\d+) sharedClock=(\d+) "
+            r"seen=([\d,]*) left=([\d,]*)", output.strip())
+        assert match, outputs
+        self_id, world, moving, shared_clock, seen, left = match.groups()
+        results.append({
+            "self": int(self_id),
+            "world": int(world),
+            "moving": int(moving),
+            "shared_clock": int(shared_clock),
+            "seen": {int(value) for value in seen.split(",") if value},
+            "left": {int(value) for value in left.split(",") if value},
+        })
+
+    ids = {result["self"] for result in results}
+    assert ids == {1, 2, 3}, outputs
+    assert all(result["world"] == result["moving"] == result["shared_clock"] == 1
+               for result in results), outputs
+    assert all(result["seen"] == ids - {result["self"]} for result in results), outputs
+    # The second launched peer exits early, regardless of which ID it received.
+    assert results[1]["self"] in results[0]["left"], outputs
 finally:
     for process in locals().get("peers", []):
         if process.poll() is None:
