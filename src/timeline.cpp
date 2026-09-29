@@ -2,6 +2,8 @@
 
 #include "engine/log.hpp"
 
+#include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <numeric>
@@ -44,7 +46,14 @@ Timeline::Timeline() {
     sourceStart_ = sourceNow();
 }
 
-Timeline::Timeline(const std::int64_t* microsecondCounter) : counter_(microsecondCounter) {
+Timeline::Timeline(const std::int64_t* counter, std::int64_t unitsPerSecond) : counter_(counter) {
+    if (unitsPerSecond <= 0) {
+        log::error("Timeline counter rate must be positive, got {}; using 1000000", unitsPerSecond);
+        unitsPerSecond = 1'000'000;
+    }
+
+    rootUnitsPerSecond_ = unitsPerSecond;
+    ticksPerSecond_ = unitsPerSecond;
     sourceStart_ = sourceNow();
 }
 
@@ -58,6 +67,17 @@ Timeline::Timeline(const Timeline& source, std::int64_t ticksPerSecond) : source
     ticksPerSecond_ = ticksPerSecond;
     recomputeRate(rateDen_);
     sourceStart_ = sourceNow();
+    source.children_.push_back(this);
+}
+
+Timeline::~Timeline() {
+    if (source_ != nullptr) {
+        std::erase(source_->children_, this);
+    }
+    if (!children_.empty()) {
+        log::error("Timeline destroyed with {} live derived timelines", children_.size());
+        assert(children_.empty());
+    }
 }
 
 std::int64_t Timeline::now() const noexcept {
@@ -104,10 +124,17 @@ void Timeline::setTicksPerSecond(std::int64_t rate) {
         return;
     }
 
+    // After bank(), bankedTicks_ is now() even while paused, so all children bank at one instant.
     bank();
+    for (Timeline* child : children_) {
+        child->bankAt(bankedTicks_);
+    }
     const std::int64_t previousRateDen = rateDen_;
     ticksPerSecond_ = rate;
     recomputeRate(previousRateDen);
+    for (Timeline* child : children_) {
+        child->recomputeRate(child->rateDen_);
+    }
 }
 
 void Timeline::pause() noexcept {
@@ -130,8 +157,7 @@ bool Timeline::paused() const noexcept {
     return paused_;
 }
 
-void Timeline::bank() noexcept {
-    const std::int64_t sourceTicks = sourceNow();
+void Timeline::bankAt(std::int64_t sourceTicks) noexcept {
     const std::int64_t elapsed = paused_ ? 0 : sourceTicks - sourceStart_;
     const Elapsed scaled = scaleElapsed(elapsed, remainder_, rateNum_, rateDen_);
 
@@ -141,7 +167,8 @@ void Timeline::bank() noexcept {
 }
 
 void Timeline::recomputeRate(std::int64_t previousRateDen) noexcept {
-    const std::int64_t sourceRate = source_ != nullptr ? source_->ticksPerSecond_ : ticksPerSecond_;
+    const std::int64_t sourceRate =
+        source_ != nullptr ? source_->ticksPerSecond_ : rootUnitsPerSecond_;
     const std::int64_t rawNum = ticksPerSecond_ * speedNum_;
     const std::int64_t rawDen = sourceRate * speedDen_;
     const std::int64_t divisor = std::gcd(rawNum, rawDen);
