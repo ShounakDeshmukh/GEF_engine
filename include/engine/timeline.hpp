@@ -17,7 +17,8 @@ namespace engine {
  *  no thread mutates this Timeline. setSpeedMultiplier(), setTicksPerSecond(),
  *  pause() and unpause() write state that now() reads without synchronisation,
  *  so they must not overlap any other call on it; sequence them at a frame
- *  barrier. */
+ *  barrier. Under a SimulationThread, mutate it only through post() or
+ *  pause()/unpause()/togglePause()/setSpeed(). */
 class Timeline {
 public:
     /** Root timeline running on chrono::steady_clock at one tick per microsecond. */
