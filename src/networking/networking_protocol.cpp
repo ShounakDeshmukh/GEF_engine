@@ -169,7 +169,8 @@ Bytes encodeWorld(const WorldSnapshot& world) {
     append32(out, std::bit_cast<std::uint32_t>(world.droneY));
     append8(out, static_cast<std::uint8_t>(world.peers.size()));
     for (const auto& peer : world.peers) {
-        if (peer.id == 0 || peer.id > 255 || peer.endpoint.empty() || peer.endpoint.size() > 255)
+        if (peer.id == 0 || peer.id > 255 || peer.endpoint.empty() || peer.endpoint.size() > 255 ||
+            peer.endpoint.find('\0') != std::string::npos)
             return {};
         append32(out, peer.id);
         append8(out, static_cast<std::uint8_t>(peer.endpoint.size()));

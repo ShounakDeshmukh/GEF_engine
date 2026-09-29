@@ -181,12 +181,14 @@ struct CoordinatorServer::Impl {
                 {
                     std::lock_guard lock(clientsMutex);
                     id = static_cast<ClientId>(clients.size() + 1);
-                    if (id <= 255)
-                        clients.push_back({id, endpoint, Clock::now()});
                 }
                 if (id > 255 || firstControlPort + id > 65535) {
                     socket.send(encode({MessageType::Welcome, kServerId, 0, 0, {}}));
                     continue;
+                }
+                {
+                    std::lock_guard lock(clientsMutex);
+                    clients.push_back({id, endpoint, Clock::now()});
                 }
                 const auto port = static_cast<std::uint16_t>(firstControlPort + id);
                 std::promise<std::string> controlReady;
@@ -196,6 +198,10 @@ struct CoordinatorServer::Impl {
                         control(id, port, std::move(promise));
                     });
                 if (!future.get().empty()) {
+                    {
+                        std::lock_guard lock(clientsMutex);
+                        clients.pop_back();
+                    }
                     socket.send(encode({MessageType::Welcome, kServerId, 0, 0, {}}));
                     continue;
                 }

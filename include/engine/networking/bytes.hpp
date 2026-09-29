@@ -10,6 +10,9 @@
 #include <vector>
 
 namespace engine::networking {
+    /** Owning buffer for an encoded message or payload. */
     using Bytes = std::vector<std::byte>;
+
+    /** Read-only view of bytes owned by the caller; it does not extend their lifetime. */
     using ByteView = std::span<const std::byte>;
 }

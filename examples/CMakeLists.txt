@@ -23,3 +23,4 @@ add_executable(scaling_demo scaling_demo/main.cpp)
 target_link_libraries(scaling_demo PRIVATE engine)
 
 add_subdirectory(networking_demo)
+add_subdirectory(peer_to_peer_demo)

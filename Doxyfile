@@ -6,7 +6,7 @@ PROJECT_NAME            = "Deadlock Engine"
 PROJECT_BRIEF           = "2D game engine"
 OUTPUT_DIRECTORY        = docs
 
-INPUT                   = include README.md
+INPUT                   = include README.md CHANGELOG.md
 RECURSIVE               = YES
 FILE_PATTERNS           = *.hpp
 USE_MDFILE_AS_MAINPAGE  = README.md

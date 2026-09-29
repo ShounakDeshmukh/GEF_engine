@@ -93,4 +93,7 @@ TEST_CASE("world snapshot round trips peers and rejects truncation", "[networkin
     REQUIRE(decoded->peers[1].id == 2);
     REQUIRE(decoded->peers[1].endpoint == "tcp://127.0.0.1:6102");
     REQUIRE_FALSE(engine::networking::decodeWorld({encoded.data(), encoded.size() - 1}));
+
+    world.peers[0].endpoint = std::string("tcp://host:", 11) + '\0' + "6101";
+    REQUIRE(engine::networking::encodeWorld(world).empty());
 }
