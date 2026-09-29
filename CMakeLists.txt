@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
+
+
 project(engine VERSION 0.1.0 LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL)
@@ -32,11 +34,18 @@ add_library(engine STATIC
     src/log.cpp
     src/entity.cpp
     src/timeline.cpp
+    src/keyboardState.cpp
+    src/simulationThread.cpp
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
     src/networking_protocol.cpp
     src/networking_session.cpp
+    src/networking/connectionManager.hpp
+    src/networking/publisher.cpp
+    src/networking/subscriber.cpp
+    src/networking/requestHandler.cpp
+    src/networking/responseHandler.cpp
 )
 add_library(engine::engine ALIAS engine)
 
@@ -59,13 +68,16 @@ target_link_libraries(engine
         SDL3_image::SDL3_image
         SDL3_ttf::SDL3_ttf
         spdlog::spdlog
-        ${ENGINE_ZMQ_TARGET}
+        cppzmq-static
 )
 
 target_compile_options(engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra>
 )
+
+find_package(Threads REQUIRED)
+target_link_libraries(engine PUBLIC Threads::Threads)
 
 if(ENGINE_BUILD_EXAMPLES)
     add_subdirectory(examples)

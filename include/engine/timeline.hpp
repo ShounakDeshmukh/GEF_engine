@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace engine {
 
@@ -16,22 +17,25 @@ namespace engine {
  *  no thread mutates this Timeline. setSpeedMultiplier(), setTicksPerSecond(),
  *  pause() and unpause() write state that now() reads without synchronisation,
  *  so they must not overlap any other call on it; sequence them at a frame
- *  barrier. */
+ *  barrier. Under a SimulationThread, mutate it only through post() or
+ *  pause()/unpause()/togglePause()/setSpeed(). */
 class Timeline {
 public:
     /** Root timeline running on chrono::steady_clock at one tick per microsecond. */
     Timeline();
 
-    /** Root timeline running on an external microsecond counter, for driving
-     *  time from a source other than the system clock, such as a recorded
-     *  replay. The counter must outlive this Timeline and must never
-     *  decrease. */
-    explicit Timeline(const std::int64_t* microsecondCounter);
+    /** Root timeline on an external counter advancing unitsPerSecond per
+     *  second, such as a replay clock or a loop counter (unitsPerSecond = 60
+     *  counts iterations). The counter must outlive this Timeline and must
+     *  never decrease. */
+    explicit Timeline(const std::int64_t* counter, std::int64_t unitsPerSecond = 1'000'000);
 
     /** Timeline running on source, ticking ticksPerSecond times per second of
      *  simulated time. Under a source that is slowed or sped up, that is not
      *  the same as a second of real time. source must outlive this Timeline. */
     Timeline(const Timeline& source, std::int64_t ticksPerSecond);
+
+    ~Timeline();
 
     /** Timelines are non-relocatable: a derived Timeline holds a pointer to
      *  its source, so copying or moving one would leave its children reading a
@@ -62,7 +66,7 @@ public:
     void setSpeedMultiplier(float multiplier);
 
     /** Sets the tick rate. A no-op, logged as an error, if rate is not
-     *  positive. */
+     *  positive. Derived timelines keep their own rate. */
     void setTicksPerSecond(std::int64_t rate);
 
     /** Freezes now(). A no-op if already paused. */
@@ -72,7 +76,8 @@ public:
     bool paused() const noexcept;
 
 private:
-    void bank() noexcept;
+    void bank() noexcept { bankAt(sourceNow()); }
+    void bankAt(std::int64_t sourceTicks) noexcept;
     void recomputeRate(std::int64_t previousRateDen) noexcept;
     std::int64_t sourceNow() const noexcept;
 
@@ -83,8 +88,10 @@ private:
     std::int64_t remainder_ = 0;             // part of a tick, in rateDen_ units
     std::int64_t rateNum_ = 1, rateDen_ = 1; // our ticks per source tick
     std::int64_t ticksPerSecond_ = 1'000'000;
-    std::int64_t speedNum_ = 1, speedDen_ = 1; // speed as an exact fraction
+    std::int64_t rootUnitsPerSecond_ = 1'000'000; // root only
+    std::int64_t speedNum_ = 1, speedDen_ = 1;    // speed as an exact fraction
     bool paused_ = false;
+    mutable std::vector<Timeline*> children_;
 };
 
 /** Turns elapsed Timeline time into a whole number of fixed-size steps.
