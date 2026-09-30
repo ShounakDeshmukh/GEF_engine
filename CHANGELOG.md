@@ -4,6 +4,34 @@ All notable changes to Deadlock are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/). Only `include/engine/` is covered by
 the version contract.
 
+## [0.2.0] - 2026-09-30
+
+Adds a simulation thread and client-server and peer-to-peer networking. Consuming repos should
+pin `GIT_TAG v0.2.0`.
+
+### Added
+
+- `engine::SimulationThread` - fixed-step ticks on a dedicated thread, with optional subsystem
+  threads, publishing a `RenderFrame` for main to draw.
+- `engine::threading::LatestValue` and `engine::threading::ThreadSafeQueue` - latest-wins and
+  FIFO handoff between threads.
+- `engine::KeyboardState` - value copy of keyboard state, captured on main and handed to the
+  simulation thread.
+- `engine::networking` transport: `publisher` / `subscriber` (topic pub/sub) and
+  `requestHandler` / `responseHandler` (request/reply), for fixed-size and variable-length
+  (`Bytes`) messages, with receive and reply timeouts.
+- `engine::networking::sessionServer` and `sessionClient` - client-server sessions: join, roster,
+  a server thread per client, snapshots in each client's update reply, reliable ordered
+  messages, heartbeats and timeouts, and per-client `stats()`.
+- `engine::networking::peerSession` - hybrid peer-to-peer: the server provides shared objects
+  and the roster, and each peer's own entities go directly to the other peers.
+- `engine::networking::sceneReplicator` - converts a `Scene`'s replicated entities to snapshot
+  bytes and back, keyed by `NetId`.
+- `engine::ClientId` and `engine::NetId` in `engine/ids.hpp`, and `engine::networking::Bytes` /
+  `ByteView`.
+- `Timeline(const std::int64_t* counter, std::int64_t unitsPerSecond)` - a root timeline on a
+  counter of any rate. The default is still one unit per microsecond.
+
 ## [0.1.0] - 2026-09-06
 
 First tagged release. Consuming repos should pin `GIT_TAG v0.1.0` instead of `main`.
