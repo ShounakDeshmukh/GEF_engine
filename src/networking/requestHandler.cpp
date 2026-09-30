@@ -6,11 +6,35 @@
 
 namespace engine::networking 
 {
+    namespace {
+        /** Receives the [error][reply] frame pair. False on timeout, interruption or a
+         *  malformed reply; the REQ socket may then be mid-reply, so the caller must
+         *  reconnect() before sending again. */
+        bool receiveReply(zmq::socket_t& sck, NetworkError& error, zmq::message_t& reply)
+        {
+            try {
+                zmq::message_t errorMessage;
+                if(!sck.recv(errorMessage, zmq::recv_flags::none)) {return false;}
+                if(errorMessage.size() != sizeof(NetworkError) || !errorMessage.more()) {return false;}
+                std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
+
+                return sck.recv(reply, zmq::recv_flags::none).has_value();
+            }
+            catch (const zmq::error_t& e)
+            {
+                std::cerr << "requestHandler receive failed: " << e.what() << std::endl;
+                return false;
+            }
+        }
+    }
+
     requestHandler::requestHandler(std::string connectionString)
+        : endpoint_(std::move(connectionString))
     {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::req);
         try {
-            connection_->sck.connect(connectionString);
+            connection_->sck.set(zmq::sockopt::rcvtimeo, timeoutMs_);
+            connection_->sck.connect(endpoint_);
         }
         catch (...)
         {
@@ -28,7 +52,23 @@ namespace engine::networking
     void requestHandler::setReplyTimeout(int milliseconds)
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        timeoutMs_ = milliseconds;
         connection_->sck.set(zmq::sockopt::rcvtimeo, milliseconds);
+    }
+
+    void requestHandler::reconnect()
+    {
+        try {
+            connection_->sck.set(zmq::sockopt::linger, 0);  // drop the abandoned request
+            connection_->sck.close();
+
+            connection_ = std::make_unique<connectionManager>(zmq::socket_type::req);
+            connection_->sck.set(zmq::sockopt::rcvtimeo, timeoutMs_);  // options don't carry over
+            connection_->sck.connect(endpoint_);
+        }
+        catch (const zmq::error_t& e) {
+            std::cerr << "requestHandler reconnect failed: " << e.what() << std::endl;
+        }
     }
 
 
@@ -71,15 +111,9 @@ namespace engine::networking
         memcpy(request.data(),req_string.data(), req_string.size());
         connection_->sck.send(request, zmq::send_flags::none);
 
-        zmq::message_t errorMessage;
-        auto errorRecv = connection_->sck.recv(errorMessage, zmq::recv_flags::none);
-        if(!errorRecv || errorMessage.size() != sizeof(NetworkError)) {return invalidString;}
         NetworkError error;
-        std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
-
         zmq::message_t reply;
-        auto recvVal = connection_->sck.recv(reply, zmq::recv_flags::none);
-        if(!recvVal){return invalidString;}
+        if(!receiveReply(connection_->sck, error, reply)) {reconnect(); return invalidString;}
         std::string reply_str(static_cast<char*>(reply.data()), reply.size());
         return reply_str;
     }
@@ -91,15 +125,9 @@ namespace engine::networking
         auto sendVal = connection_->sck.send(zmq::buffer(request, reqSize), zmq::send_flags::none);
         if(!sendVal) {return NetworkError::SendFailed;}
         
-        zmq::message_t errorMessage;
-        auto errorRecv = connection_->sck.recv(errorMessage, zmq::recv_flags::none);
-        if(!errorRecv || errorMessage.size() != sizeof(NetworkError)) {return NetworkError::ReceiveFailed;}
         NetworkError error;
-        std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
-        
         zmq::message_t replyData;
-        auto recvVal = connection_->sck.recv(replyData, zmq::recv_flags::none);
-        if(!recvVal) {return NetworkError::ReceiveFailed;}
+        if(!receiveReply(connection_->sck, error, replyData)) {reconnect(); return NetworkError::ReceiveFailed;}
         if(replyData.size() != repSize) {return NetworkError::InvalidResponseSize;}
 
         memcpy(reply, replyData.data(), repSize);
@@ -112,15 +140,9 @@ namespace engine::networking
         auto sendVal = connection_->sck.send(zmq::buffer(request, reqSize), zmq::send_flags::none);
         if(!sendVal) {return NetworkError::SendFailed;}
         
-        zmq::message_t errorMessage;
-        auto errorRecv = connection_->sck.recv(errorMessage, zmq::recv_flags::none);
-        if(!errorRecv || errorMessage.size() != sizeof(NetworkError)) {return NetworkError::ReceiveFailed;}
         NetworkError error;
-        std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
-        
         zmq::message_t replyData;
-        auto recvVal = connection_->sck.recv(replyData, zmq::recv_flags::none);
-        if(!recvVal) {return NetworkError::ReceiveFailed;}
+        if(!receiveReply(connection_->sck, error, replyData)) {reconnect(); return NetworkError::ReceiveFailed;}
 
         reply.resize(replyData.size());
 

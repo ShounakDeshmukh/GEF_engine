@@ -50,11 +50,23 @@ namespace engine::networking {
         std::pair<Bytes, bool> send(ByteView msg);
         std::pair<Bytes, bool> send(const Bytes& msg);
 
+        /** How long each send() waits for its reply; the clock starts per request, so idle
+         *  time before a send() never counts. Defaults to kDefaultReplyTimeoutMs. -1 waits
+         *  forever, so send() never returns if the server is gone. On timeout the socket
+         *  is recreated and the in-flight request is dropped. */
         void setReplyTimeout(int milliseconds);
+
+        static constexpr int kDefaultReplyTimeoutMs = 1000;
 
         private:
         std::unique_ptr<connectionManager> connection_;
         std::mutex mutex_;
+
+        std::string endpoint_;      // stored so the socket can be recreated
+        int timeoutMs_ = kDefaultReplyTimeoutMs;
+
+        /** not threadsafe, caller must hold mutex_. Replaces the REQ socket after a receive timeout. */
+        void reconnect();
 
         NetworkError sendAndReceive(const void* request, std::size_t reqSize, Bytes& reply);
         NetworkError sendAndReceive(const void* request, std::size_t reqSize, void* reply, std::size_t repSize);

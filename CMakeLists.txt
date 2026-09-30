@@ -44,7 +44,12 @@ add_library(engine STATIC
     src/networking/subscriber.cpp
     src/networking/requestHandler.cpp
     src/networking/responseHandler.cpp
-    
+    src/networking/byteCodec.hpp
+    src/networking/sessionProtocol.hpp
+    src/networking/sceneReplicator.cpp
+    src/networking/sessionServer.cpp
+    src/networking/sessionClient.cpp
+    src/networking/peerSession.cpp
 )
 add_library(engine::engine ALIAS engine)
 
