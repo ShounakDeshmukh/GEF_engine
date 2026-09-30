@@ -7,10 +7,11 @@
 namespace engine::networking 
 {
     requestHandler::requestHandler(std::string connectionString)
+        : endpoint_(std::move(connectionString))
     {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::req);
         try {
-            connection_->sck.connect(connectionString);
+            connection_->sck.connect(endpoint_);
         }
         catch (...)
         {
@@ -28,7 +29,24 @@ namespace engine::networking
     void requestHandler::setReplyTimeout(int milliseconds)
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        timeoutMs_ = milliseconds;
         connection_->sck.set(zmq::sockopt::rcvtimeo, milliseconds);
+    }
+
+    void requestHandler::reconnect()
+    {
+        try {
+            connection_->sck.set(zmq::sockopt::linger, 0);  // drop the abandoned request
+            connection_->sck.close();
+
+            connection_ = std::make_unique<connectionManager>(zmq::socket_type::req);
+            connection_->sck.set(zmq::sockopt::linger, 0);
+            connection_->sck.set(zmq::sockopt::rcvtimeo, timeoutMs_);  // options don't carry over
+            connection_->sck.connect(endpoint_);
+        }
+        catch (const zmq::error_t& e) {
+            std::cerr << "requestHandler reconnect failed: " << e.what() << std::endl;
+        }
     }
 
 
@@ -73,13 +91,14 @@ namespace engine::networking
 
         zmq::message_t errorMessage;
         auto errorRecv = connection_->sck.recv(errorMessage, zmq::recv_flags::none);
-        if(!errorRecv || errorMessage.size() != sizeof(NetworkError)) {return invalidString;}
+        if(!errorRecv) {reconnect(); return invalidString;}
+        if(errorMessage.size() != sizeof(NetworkError)) {return invalidString;}
         NetworkError error;
         std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
 
         zmq::message_t reply;
         auto recvVal = connection_->sck.recv(reply, zmq::recv_flags::none);
-        if(!recvVal){return invalidString;}
+        if(!recvVal){reconnect(); return invalidString;}
         std::string reply_str(static_cast<char*>(reply.data()), reply.size());
         return reply_str;
     }
@@ -93,13 +112,14 @@ namespace engine::networking
         
         zmq::message_t errorMessage;
         auto errorRecv = connection_->sck.recv(errorMessage, zmq::recv_flags::none);
-        if(!errorRecv || errorMessage.size() != sizeof(NetworkError)) {return NetworkError::ReceiveFailed;}
+        if(!errorRecv) {reconnect(); return NetworkError::ReceiveFailed;}
+        if(errorMessage.size() != sizeof(NetworkError)) {return NetworkError::ReceiveFailed;}
         NetworkError error;
         std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
-        
+
         zmq::message_t replyData;
         auto recvVal = connection_->sck.recv(replyData, zmq::recv_flags::none);
-        if(!recvVal) {return NetworkError::ReceiveFailed;}
+        if(!recvVal) {reconnect(); return NetworkError::ReceiveFailed;}
         if(replyData.size() != repSize) {return NetworkError::InvalidResponseSize;}
 
         memcpy(reply, replyData.data(), repSize);
@@ -114,13 +134,14 @@ namespace engine::networking
         
         zmq::message_t errorMessage;
         auto errorRecv = connection_->sck.recv(errorMessage, zmq::recv_flags::none);
-        if(!errorRecv || errorMessage.size() != sizeof(NetworkError)) {return NetworkError::ReceiveFailed;}
+        if(!errorRecv) {reconnect(); return NetworkError::ReceiveFailed;}
+        if(errorMessage.size() != sizeof(NetworkError)) {return NetworkError::ReceiveFailed;}
         NetworkError error;
         std::memcpy(&error, errorMessage.data(), sizeof(NetworkError));
-        
+
         zmq::message_t replyData;
         auto recvVal = connection_->sck.recv(replyData, zmq::recv_flags::none);
-        if(!recvVal) {return NetworkError::ReceiveFailed;}
+        if(!recvVal) {reconnect(); return NetworkError::ReceiveFailed;}
 
         reply.resize(replyData.size());
 

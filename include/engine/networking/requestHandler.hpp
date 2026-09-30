@@ -56,6 +56,12 @@ namespace engine::networking {
         std::unique_ptr<connectionManager> connection_;
         std::mutex mutex_;
 
+        std::string endpoint_;      // stored so the socket can be recreated
+        int timeoutMs_ = -1;        // -1 = zmq default (block forever)
+
+        /** not threadsafe, caller must hold mutex_. Replaces the REQ socket after a receive timeout. */
+        void reconnect();
+
         NetworkError sendAndReceive(const void* request, std::size_t reqSize, Bytes& reply);
         NetworkError sendAndReceive(const void* request, std::size_t reqSize, void* reply, std::size_t repSize);
     

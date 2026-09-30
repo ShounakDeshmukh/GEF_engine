@@ -66,13 +66,23 @@ namespace engine::networking {
 
         while (!stop_.load()) {
             zmq::message_t request;
-            connection_->sck.recv(request, zmq::recv_flags::none);
+            auto status = connection_->sck.recv(request, zmq::recv_flags::none);
+            if(!status){continue;}
 
             std::string request_str(static_cast<char*>(request.data()), request.size());
 
-            std::string reply_str = func(request_str);
+            std::string reply_str;
+            auto err = NetworkError::None;
+            try {
+                reply_str = func(request_str);
+            }
+            catch (...)
+            {
+                err = NetworkError::HandlerError;
+            }
             zmq::message_t reply(reply_str.size());
             memcpy(reply.data(), reply_str.data(), reply_str.size());
+            connection_->sck.send(zmq::buffer(&err, sizeof(err)), zmq::send_flags::sndmore);
             connection_->sck.send(reply, zmq::send_flags::none);
         }
     }
