@@ -35,6 +35,9 @@ namespace engine::networking {
             std::uint32_t nextSendSeq = 1;
             std::deque<wireMessage> outbox;         // sent to the client, not yet acknowledged
             std::uint64_t sentSnapshotVersion = 0;  // newest version put in a reply to it
+            std::uint64_t updates = 0;
+            std::uint64_t stateUpdates = 0;
+            std::uint64_t snapshotsSent = 0;
         };
 
         explicit impl(std::string connectionString)
@@ -152,8 +155,13 @@ namespace engine::networking {
         }
         clientSlot& slot = *it->second;
         slot.lastSeen = clock::now();
+        ++slot.updates;
 
-        if(req.hasState) {states[id] = receivedState{id, req.tick, std::move(req.state)};}
+        if(req.hasState)
+        {
+            states[id] = receivedState{id, req.tick, std::move(req.state)};
+            ++slot.stateUpdates;
+        }
 
         for(auto& m : req.messages)
         {
@@ -196,6 +204,7 @@ namespace engine::networking {
             reply.snapshotTick = snapshotTick;
             reply.snapshot = snapshot;
             slot.sentSnapshotVersion = snapshotVersion;
+            ++slot.snapshotsSent;
         }
         return encode(reply);
     }
@@ -368,6 +377,18 @@ namespace engine::networking {
         std::vector<clientInfo> clients;
         for(const auto& [id, slot] : impl_->clients) {clients.push_back(slot->info);}
         return clients;
+    }
+
+    std::vector<clientStats> sessionServer::stats() const
+    {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
+        std::vector<clientStats> out;
+        out.reserve(impl_->clients.size());
+        for(const auto& [id, slot] : impl_->clients)
+        {
+            out.push_back({id, slot->updates, slot->stateUpdates, slot->snapshotsSent});
+        }
+        return out;
     }
 
     sceneReplicator& sessionServer::replicator()

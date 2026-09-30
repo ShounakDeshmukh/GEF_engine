@@ -63,6 +63,8 @@ namespace engine::networking {
         /** threadsafe. Joins, leaves and timeouts since the last drain. */
         std::deque<rosterEvent> drainRosterEvents();
         std::vector<clientInfo> roster() const;
+        /** threadsafe. One entry per connected client. */
+        std::vector<clientStats> stats() const;
 
         // ---- scene ----------------------------------------------------------------
 
