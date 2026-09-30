@@ -5,7 +5,7 @@
 
 #include <functional>
 #include <atomic>
-#include <iostream>
+#include "engine/log.hpp"
 
 #include "networkShared.hpp"
 #include "bytes.hpp"
@@ -35,7 +35,7 @@ namespace engine::networking {
         {
             if(running_.exchange(true))
             {
-                std::cerr << "responseHandler already running" << std::endl;
+                log::error("responseHandler already running");
                 return;
             }
             RunningGuard guard{running_, stop_};

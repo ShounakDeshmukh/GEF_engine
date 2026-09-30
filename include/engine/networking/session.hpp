@@ -40,4 +40,14 @@ namespace engine::networking {
         Bytes payload;
     };
 
+    /** Cumulative per-client counters since the client joined; diff two calls for rates.
+     *  updates counts every update and heartbeat, stateUpdates only those carrying scene
+     *  state, snapshotsSent the replies that carried a snapshot. */
+    struct clientStats {
+        ClientId id = kServerId;
+        std::uint64_t updates = 0;
+        std::uint64_t stateUpdates = 0;
+        std::uint64_t snapshotsSent = 0;
+    };
+
 }

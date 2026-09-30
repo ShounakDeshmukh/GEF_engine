@@ -14,8 +14,8 @@ namespace engine::networking {
 
     /** Client side of a client-server session.
      *
-     *  Owns two threads once started: an update loop (request/reply to this client's
-     *  own server thread) and a snapshot listener (subscriber). Neither follows gameTime,
+     *  Owns one thread once started: an update loop (request/reply to this client's
+     *  own server thread). Snapshots arrive in the replies. It does not follow gameTime,
      *  so pausing the game keeps the heartbeat going; the update rate follows the game
      *  because submitScene() is called from onTick.
      *
@@ -38,9 +38,9 @@ namespace engine::networking {
         /** kServerId until join() succeeds. */
         ClientId id() const;
 
-        /** After join(). Starts the update loop and snapshot listener. */
+        /** After join(). Starts the update loop. */
         void start();
-        /** Tells the server we left, then stops the threads. Idempotent. */
+        /** Tells the server we left, then stops the update thread. Idempotent. */
         void leave();
 
         /** How long each join and update waits for the server's reply. Defaults to
@@ -79,6 +79,11 @@ namespace engine::networking {
          *  Non-blocking: one update is in flight at a time, and a newer submit replaces
          *  an unsent one. */
         void submitScene(const Scene& scene, std::int64_t tick);
+
+        /** Sim thread only. Wakes the update loop to fetch the newest snapshot without
+         *  sending scene state, so a client that owns nothing (a peerSession, a spectator)
+         *  still receives server state at its own tick rate. submitScene() already does this. */
+        void requestSnapshot(std::int64_t tick);
 
         /** Sim thread only. Applies the newest snapshot, skipping entities this client
          *  owns. Returns false if there was no new snapshot. */

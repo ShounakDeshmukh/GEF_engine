@@ -1,12 +1,11 @@
 #include "engine/networking/sessionServer.hpp"
-#include "engine/networking/publisher.hpp"
 #include "engine/networking/responseHandler.hpp"
 #include "sessionProtocol.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <iostream>
+#include "engine/log.hpp"
 #include <map>
 #include <mutex>
 #include <thread>
@@ -35,16 +34,18 @@ namespace engine::networking {
             std::uint32_t lastReceivedSeq = 0;      // highest in-order message from the client
             std::uint32_t nextSendSeq = 1;
             std::deque<wireMessage> outbox;         // sent to the client, not yet acknowledged
+            std::uint64_t sentSnapshotVersion = 0;  // newest version put in a reply to it
+            std::uint64_t updates = 0;
+            std::uint64_t stateUpdates = 0;
+            std::uint64_t snapshotsSent = 0;
         };
 
         explicit impl(std::string connectionString)
             : joinHandler(std::move(connectionString)),
-              snapshotPublisher("tcp://*:0"),
               replicator(kServerId)
         {}
 
         responseHandler joinHandler;
-        publisher snapshotPublisher;
         sceneReplicator replicator;                 // sim thread only
         std::atomic<int> clientTimeoutMs{kDefaultClientTimeoutMs};
 
@@ -57,6 +58,9 @@ namespace engine::networking {
         std::vector<ClientId> departed;             // for applyClientStates
         std::unordered_map<ClientId, receivedState> states;
         std::deque<receivedMessage> inbox;
+        Bytes snapshot;                             // newest encodeAll() output
+        std::int64_t snapshotTick = 0;
+        std::uint64_t snapshotVersion = 0;          // 0 = nothing published yet
 
         std::thread joinThread;
         std::thread watchdogThread;
@@ -97,7 +101,6 @@ namespace engine::networking {
                 reply.status = ReplyStatus::Ok;
                 reply.id = id;
                 reply.updatePort = slot->handler->port();
-                reply.snapshotPort = snapshotPublisher.port();
                 return encode(reply);
             }
         }
@@ -128,7 +131,6 @@ namespace engine::networking {
         reply.status = ReplyStatus::Ok;
         reply.id = id;
         reply.updatePort = handler->port();
-        reply.snapshotPort = snapshotPublisher.port();
         clients.emplace(id, std::move(slot));
         return encode(reply);
     }
@@ -153,8 +155,13 @@ namespace engine::networking {
         }
         clientSlot& slot = *it->second;
         slot.lastSeen = clock::now();
+        ++slot.updates;
 
-        if(req.hasState) {states[id] = receivedState{id, req.tick, std::move(req.state)};}
+        if(req.hasState)
+        {
+            states[id] = receivedState{id, req.tick, std::move(req.state)};
+            ++slot.stateUpdates;
+        }
 
         for(auto& m : req.messages)
         {
@@ -184,7 +191,21 @@ namespace engine::networking {
         }
         reply.messages.assign(slot.outbox.begin(), slot.outbox.end());
 
-        if(req.kind == RequestKind::Leave) {retireLocked(id);}
+        if(req.kind == RequestKind::Leave)
+        {
+            retireLocked(id);
+            return encode(reply);
+        }
+
+        // a lost reply is not resent: the next exchange carries a newer snapshot
+        if(snapshotVersion != 0 && slot.sentSnapshotVersion != snapshotVersion)
+        {
+            reply.hasSnapshot = true;
+            reply.snapshotTick = snapshotTick;
+            reply.snapshot = snapshot;
+            slot.sentSnapshotVersion = snapshotVersion;
+            ++slot.snapshotsSent;
+        }
         return encode(reply);
     }
 
@@ -271,7 +292,7 @@ namespace engine::networking {
     {
         if(impl_->started)
         {
-            std::cerr << "sessionServer already started" << std::endl;
+            log::error("sessionServer already started");
             return;
         }
         impl_->started = true;
@@ -358,6 +379,18 @@ namespace engine::networking {
         return clients;
     }
 
+    std::vector<clientStats> sessionServer::stats() const
+    {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
+        std::vector<clientStats> out;
+        out.reserve(impl_->clients.size());
+        for(const auto& [id, slot] : impl_->clients)
+        {
+            out.push_back({id, slot->updates, slot->stateUpdates, slot->snapshotsSent});
+        }
+        return out;
+    }
+
     sceneReplicator& sessionServer::replicator()
     {
         return impl_->replicator;
@@ -365,7 +398,11 @@ namespace engine::networking {
 
     void sessionServer::publishScene(const Scene& scene, std::int64_t tick)
     {
-        impl_->snapshotPublisher.publish(encodeSnapshot(tick, impl_->replicator.encodeAll(scene)), kSnapshotTopic);
+        Bytes encoded = impl_->replicator.encodeAll(scene);     // outside the lock
+        std::lock_guard<std::mutex> lock(impl_->mutex);
+        impl_->snapshot = std::move(encoded);
+        impl_->snapshotTick = tick;
+        ++impl_->snapshotVersion;
     }
 
     void sessionServer::applyClientStates(Scene& scene)
