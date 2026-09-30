@@ -13,7 +13,7 @@ namespace engine::networking {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::sub);
         try {
             connection_->sck.set(zmq::sockopt::subscribe, topic);
-            connection_->sck.connect(connectionString);
+            if(!connectionString.empty()) {connection_->sck.connect(connectionString);}
         }
         catch (...)
         {
@@ -25,6 +25,32 @@ namespace engine::networking {
     subscriber::~subscriber()
     {
         connection_->sck.close();
+    }
+
+    bool subscriber::connect(const std::string& endpoint)
+    {
+        try {
+            connection_->sck.connect(endpoint);
+        }
+        catch (...)
+        {
+            std::cerr << "failed to connect to " << endpoint << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool subscriber::disconnect(const std::string& endpoint)
+    {
+        try {
+            connection_->sck.disconnect(endpoint);
+        }
+        catch (...)
+        {
+            std::cerr << "failed to disconnect from " << endpoint << std::endl;
+            return false;
+        }
+        return true;
     }
 
     std::string subscriber::listen()
@@ -44,6 +70,27 @@ namespace engine::networking {
         connection_->sck.recv(update);
         std::string update_str(static_cast<char*>(update.data()), update.size());
         return update_str;
+    }
+
+    Bytes subscriber::listenBytes()
+    {
+        if(running_.exchange(true))
+        {
+            std::cerr << "subscriber::listenBytes() already running" << std::endl;
+            return {};
+        }
+
+        RunningGuard guard{running_};
+
+        zmq::message_t topic;
+        zmq::message_t update;
+
+        connection_->sck.recv(topic);
+        connection_->sck.recv(update);
+
+        Bytes result(update.size());
+        std::memcpy(result.data(), update.data(), update.size());
+        return result;
     }
 
     void subscriber::receive(void* data, std::size_t size)

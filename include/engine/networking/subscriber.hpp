@@ -4,6 +4,7 @@
 #include <memory>
 #include <atomic>
 
+#include "bytes.hpp"
 
 namespace engine::networking {
 
@@ -12,11 +13,17 @@ namespace engine::networking {
     //** Create a subscriber per topic */
     class subscriber {
         public:
-        subscriber(std::string connectionString, std::string topic = "");
+        subscriber(std::string connectionString = "", std::string topic = "");
         ~subscriber();
+
+        bool connect(const std::string& endpoint);
+        bool disconnect(const std::string& endpoint);
 
         /** Enforces single thread usage */
         std::string listen();
+
+        /** Enforces single thread usage. Variable sized message */
+        Bytes listenBytes();
 
         /** Enforces single thread usage */
         template<typename T>

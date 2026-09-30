@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 
+#include "bytes.hpp"
 
 namespace engine::networking {
 
@@ -18,6 +19,12 @@ namespace engine::networking {
         /** threadsafe */
         void publish(std::string input, std::string topic = "");
 
+        /** threadsafe. Variable sized message */
+        void publish(ByteView data, const std::string& topic = "");
+        void publish(const Bytes& data, const std::string& topic = "");
+
+        int port() const {return port_;}
+
         /** threadsafe */
         template <typename T> 
         void publish(const T& data, std::string topic = "")
@@ -29,6 +36,7 @@ namespace engine::networking {
         private:
         std::unique_ptr<connectionManager> connection_;
         std::mutex mutex_;
+        int port_{-1};
 
         void send(const void* data, std::size_t size, std::string topic);
 

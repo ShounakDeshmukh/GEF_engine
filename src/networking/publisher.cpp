@@ -12,6 +12,8 @@ namespace engine::networking {
         connection_ = std::make_unique<connectionManager>(zmq::socket_type::pub);
         try {
             connection_->sck.bind(connectionString);
+            auto endpoint = connection_->sck.get(zmq::sockopt::last_endpoint);
+            port_ = std::stoi(endpoint.substr(endpoint.rfind(':') + 1));
         }
         catch (...)
         {
@@ -32,6 +34,16 @@ namespace engine::networking {
             memcpy(message.data(), input.data(), input.size());
             connection_->sck.send(zmq::buffer(topic), zmq::send_flags::sndmore);
             connection_->sck.send(message, zmq::send_flags::none);
+    }
+
+    void publisher::publish(ByteView data, const std::string& topic)
+    {
+        send(data.data(), data.size(), topic);
+    }
+
+    void publisher::publish(const Bytes& data, const std::string& topic)
+    {
+        publish(ByteView{data}, topic);
     }
 
     void publisher::send(const void* data, std::size_t size, std::string topic)
