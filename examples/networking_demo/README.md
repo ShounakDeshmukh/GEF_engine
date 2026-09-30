@@ -62,3 +62,6 @@ bool valid = reqHand.send(request, response);
 ```
 
 `ByteView` provides a non-owning view of the outgoing data, while `Bytes` stores the variable-size response.
+
+For a direct peer multiplayer example, see [the peer to peer demo](../peer_to_peer_demo/README.md).
+It uses the same transport wrappers through the engine's `Client` and `Server` session API.

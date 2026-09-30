@@ -1,99 +1,80 @@
 #include <catch2/catch_test_macros.hpp>
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
 #include <engine/networking/protocol.hpp>
 #include <limits>
 
-TEST_CASE("network packet round-trips its header and payload", "[networking][protocol]") {
-    const engine::networking::Packet packet{
-        .type = engine::networking::MessageType::PlayerState,
-        .sender = 7,
-        .sequence = 42,
-        .serverTick = 123456,
-        .payload = {std::byte{1}, std::byte{2}, std::byte{255}},
-    };
+using namespace engine::networking;
 
-    const engine::networking::Bytes encoded = engine::networking::encode(packet);
-    const auto decoded = engine::networking::decode(encoded);
-
-    REQUIRE(decoded.has_value());
-    REQUIRE(decoded->type == packet.type);
-    REQUIRE(decoded->sender == packet.sender);
-    REQUIRE(decoded->sequence == packet.sequence);
-    REQUIRE(decoded->serverTick == packet.serverTick);
-    REQUIRE(decoded->payload.size() == packet.payload.size());
-    REQUIRE(std::equal(decoded->payload.begin(), decoded->payload.end(),
-                       packet.payload.begin(), packet.payload.end()));
+TEST_CASE("network packets preserve generic binary data and signed ticks",
+          "[networking][protocol]") {
+    const Packet packet{
+        MessageType::PlayerState, 7, 42, -123, {std::byte{0}, std::byte{255}, std::byte{12}}};
+    const auto bytes = encode(packet);
+    REQUIRE(bytes.size() == Packet::headerSize + packet.payload.size());
+    const auto copy = decode(bytes);
+    REQUIRE(copy);
+    CHECK(copy->type == packet.type);
+    CHECK(copy->sender == packet.sender);
+    CHECK(copy->sequence == packet.sequence);
+    CHECK(copy->tick == packet.tick);
+    CHECK(copy->payload == packet.payload);
+    for (std::size_t size = 0; size < bytes.size(); ++size)
+        CHECK_FALSE(decode(ByteView(bytes).first(size)));
+    auto invalid = bytes;
+    invalid.push_back(std::byte{0});
+    CHECK_FALSE(decode(invalid));
+    invalid = bytes;
+    invalid[2] = std::byte{1};
+    CHECK_FALSE(decode(invalid)); // Old message numbers must not be interpreted as version 2.
+    invalid = bytes;
+    invalid[3] = std::byte{255};
+    CHECK_FALSE(decode(invalid));
+    auto large = packet;
+    large.payload.resize(Packet::maxPayloadSize);
+    REQUIRE(decode(encode(large)));
+    large.payload.push_back(std::byte{0});
+    CHECK(encode(large).empty());
 }
-
-TEST_CASE("network packet decoder rejects malformed input", "[networking][protocol]") {
-    const engine::networking::Packet packet{
-        .type = engine::networking::MessageType::Ping,
-        .sender = 1,
-        .sequence = 2,
-        .serverTick = 3,
-        .payload = {std::byte{9}},
-    };
-    const engine::networking::Bytes encoded = engine::networking::encode(packet);
-
-    REQUIRE_FALSE(engine::networking::decode({}).has_value());
-    REQUIRE_FALSE(
-        engine::networking::decode(engine::networking::ByteView(encoded.data(), encoded.size() - 1))
-            .has_value());
-
-    auto invalid = encoded;
-    invalid[0] = std::byte{0};
-    REQUIRE_FALSE(engine::networking::decode(invalid).has_value());
-
-    invalid = encoded;
-    invalid[3] = std::byte{0};
-    REQUIRE_FALSE(engine::networking::decode(invalid).has_value());
-}
-
-TEST_CASE("network packet encoder rejects oversized payloads", "[networking][protocol]") {
-    engine::networking::Packet packet{
-        .type = engine::networking::MessageType::Ping,
-        .sender = 1,
-        .sequence = 2,
-        .serverTick = 3,
-        .payload = engine::networking::Bytes(engine::networking::Packet::maxPayloadSize + 1),
-    };
-
-    REQUIRE(engine::networking::encode(packet).empty());
-}
-
-TEST_CASE("position payload rejects truncated and nonfinite values", "[networking][protocol]") {
-    const auto encoded = engine::networking::encodePosition({120.5f, -30.f});
-    const auto position = engine::networking::decodePosition(encoded);
-    REQUIRE(position);
-    REQUIRE(position->x == 120.5f);
-    REQUIRE(position->y == -30.f);
-    REQUIRE_FALSE(engine::networking::decodePosition({encoded.data(), 7}));
-    REQUIRE(
-        engine::networking::encodePosition({std::numeric_limits<float>::infinity(), 1.f}).empty());
-    auto invalid = encoded;
-    invalid[3] = std::byte{0x7f};
-    invalid[2] = std::byte{0x80};
-    invalid[1] = std::byte{0};
-    invalid[0] = std::byte{0};
-    REQUIRE_FALSE(engine::networking::decodePosition(invalid));
-}
-
-TEST_CASE("world snapshot round trips peers and rejects truncation", "[networking][protocol]") {
-    engine::networking::WorldSnapshot world{
-        42, 1100.f, 440.f, {{1, "tcp://127.0.0.1:6101"}, {2, "tcp://127.0.0.1:6102"}}};
-    const auto encoded = engine::networking::encodeWorld(world);
-    const auto decoded = engine::networking::decodeWorld(encoded);
-    REQUIRE(decoded);
-    REQUIRE(decoded->tick == 42);
-    REQUIRE(decoded->droneX == 1100.f);
-    REQUIRE(decoded->droneY == 440.f);
-    REQUIRE(decoded->peers.size() == 2);
-    REQUIRE(decoded->peers[1].id == 2);
-    REQUIRE(decoded->peers[1].endpoint == "tcp://127.0.0.1:6102");
-    REQUIRE_FALSE(engine::networking::decodeWorld({encoded.data(), encoded.size() - 1}));
-
-    world.peers[0].endpoint = std::string("tcp://host:", 11) + '\0' + "6101";
-    REQUIRE(engine::networking::encodeWorld(world).empty());
+TEST_CASE("world and welcome codecs round trip opaque state and directory",
+          "[networking][protocol]") {
+    ServerUpdate update{-100,
+                        {std::byte{3}, std::byte{0}},
+                        {{1, -30, {std::byte{99}}}, {2, 40, {}}},
+                        {{1, ""}, {2, "tcp://127.0.0.1:6102"}}};
+    const auto bytes = encodeServerUpdate(update);
+    REQUIRE_FALSE(bytes.empty());
+    const auto copy = decodeServerUpdate(bytes);
+    REQUIRE(copy);
+    CHECK(copy->worldTick == -100);
+    CHECK(copy->world == update.world);
+    REQUIRE(copy->players.size() == 2);
+    CHECK(copy->players[0].payload == update.players[0].payload);
+    CHECK(copy->players[0].tick == -30);
+    CHECK(copy->players[1].payload.empty());
+    REQUIRE(copy->peers.size() == 2);
+    CHECK(copy->peers[1].endpoint == update.peers[1].endpoint);
+    for (std::size_t size = 0; size < bytes.size(); ++size)
+        CHECK_FALSE(decodeServerUpdate(ByteView(bytes).first(size)));
+    auto invalid = bytes;
+    invalid.push_back(std::byte{0});
+    CHECK_FALSE(decodeServerUpdate(invalid));
+    const auto welcome = encodeWelcome({3, 65432, update});
+    const auto restored = decodeWelcome(welcome);
+    REQUIRE(restored);
+    CHECK(restored->client == 3);
+    CHECK(restored->port == 65432);
+    CHECK(restored->update.world == update.world);
+    for (std::size_t size = 0; size < welcome.size(); ++size)
+        CHECK_FALSE(decodeWelcome(ByteView(welcome).first(size)));
+    update.peers.push_back(update.peers.front());
+    CHECK(encodeServerUpdate(update).empty());
+    update.peers.pop_back();
+    update.peers[1].endpoint = std::string("tcp://host:") + '\0' + "6101";
+    CHECK(encodeServerUpdate(update).empty());
+    update.peers[1].endpoint.clear();
+    update.world.resize(Packet::maxPayloadSize);
+    CHECK(encodeServerUpdate(update).empty());
+    CHECK_FALSE(validPeerEndpoint("tcp://*:0"));
+    CHECK_FALSE(validPeerEndpoint("tcp://host:99999"));
+    CHECK_FALSE(validPeerEndpoint("tcp://host:12garbage"));
+    CHECK(validPeerEndpoint("tcp://127.0.0.1:34567"));
 }

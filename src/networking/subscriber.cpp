@@ -1,72 +1,55 @@
 #include "engine/networking/subscriber.hpp"
+
 #include "connectionManager.hpp"
-
-#include <zmq.hpp>
-#include <string>
-#include <iostream>
-
+#include "engine/log.hpp"
 
 namespace engine::networking {
-
-    subscriber::subscriber(std::string connectionString, std::string topic)
-    {
-        connection_ = std::make_unique<connectionManager>(zmq::socket_type::sub);
-        try {
-            connection_->sck.set(zmq::sockopt::subscribe, topic);
-            connection_->sck.connect(connectionString);
-        }
-        catch (...)
-        {
-            std::cerr << "failed to connect to connection" << std::endl;
-            throw std::runtime_error("Failed to create subscriber"); 
-        }
-    }
-
-    subscriber::~subscriber()
-    {
-        connection_->sck.close();
-    }
-
-    std::string subscriber::listen()
-    {
-        if(running_.exchange(true))
-        {
-            std::cerr << "subscriber::listen() already running" << std::endl;
-            return "";
-        }
-
-        RunningGuard guard{running_};
-        
-        zmq::message_t topic;
-        zmq::message_t update;
-
-        connection_->sck.recv(topic);
-        connection_->sck.recv(update);
-        std::string update_str(static_cast<char*>(update.data()), update.size());
-        return update_str;
-    }
-
-    void subscriber::receive(void* data, std::size_t size)
-    {
-        if(running_.exchange(true))
-        {
-            std::cerr << "subscriber::listen() already running" << std::endl;
-            return;
-        }
-
-        RunningGuard guard{running_};
-
-        zmq::message_t topic;
-        zmq::message_t message;
-
-        connection_->sck.recv(topic, zmq::recv_flags::none);
-        auto result = connection_->sck.recv(message, zmq::recv_flags::none);
-
-        if(!result || message.size() != size)
-        {
-            throw std::runtime_error("Received malformed message");
-        }
-        std::memcpy(data, message.data(), size);
-    }
-
+subscriber::subscriber(std::string endpoint, std::string topic)
+    : connection_(std::make_unique<connectionManager>(zmq::socket_type::sub)) {
+    connection_->sck.set(zmq::sockopt::subscribe, topic);
+    if (!endpoint.empty())
+        connect(endpoint);
 }
+subscriber::~subscriber() = default;
+void subscriber::connect(const std::string& endpoint) {
+    connection_->sck.connect(endpoint);
+}
+void subscriber::disconnect(const std::string& endpoint) {
+    connection_->sck.disconnect(endpoint);
+}
+void subscriber::setReceiveTimeout(int milliseconds) {
+    connection_->sck.set(zmq::sockopt::rcvtimeo, milliseconds);
+}
+std::optional<Bytes> subscriber::tryReceive() {
+    if (running_.exchange(true)) {
+        log::error("subscriber already receiving");
+        return std::nullopt;
+    }
+    struct Guard {
+        std::atomic<bool>& running;
+        ~Guard() { running = false; }
+    } guard{running_};
+    auto& socket = connection_->sck;
+    zmq::message_t topic, data;
+    if (!socket.recv(topic) || !socket.get(zmq::sockopt::rcvmore) || !socket.recv(data))
+        return std::nullopt;
+    if (socket.get(zmq::sockopt::rcvmore)) {
+        do {
+            zmq::message_t extra;
+            if (!socket.recv(extra))
+                break;
+        } while (socket.get(zmq::sockopt::rcvmore));
+        return std::nullopt;
+    }
+    Bytes bytes(data.size());
+    if (!bytes.empty())
+        std::memcpy(bytes.data(), data.data(), bytes.size());
+    return bytes;
+}
+std::string subscriber::listen() {
+    const auto data = tryReceive();
+    if (!data || data->empty())
+        return {};
+    return {reinterpret_cast<const char*>(data->data()), data->size()};
+}
+} // namespace engine::networking

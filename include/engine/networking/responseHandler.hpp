@@ -1,135 +1,79 @@
-#pragma once 
+#pragma once
 
-#include <string>
-#include <memory>
-
-#include <functional>
-#include <atomic>
-#include <iostream>
-
-#include "networkShared.hpp"
 #include "bytes.hpp"
+#include "engine/log.hpp"
+#include "networkShared.hpp"
+
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <string>
+#include <type_traits>
 
 namespace engine::networking {
+class connectionManager;
 
-    
-    class connectionManager;
-
-    /** Server side request-reply handler */
-    class responseHandler {
-        public:
-        responseHandler(std::string connectionString);
-        ~responseHandler();
-
-        /** Enforces single thread usage */
-        void run();
-        
-        /** Enforces single thread usage */
-        void run(std::function<std::string(std::string)> func);
-
-        /** Enforces single thread usage */
-        template <typename T, typename U, typename Func>
-        void run(Func&& func)
-        {
-            if(running_.exchange(true))
-            {
-                std::cerr << "responseHandler already running" << std::endl;
-                return;
-            }
-            stop_.store(false);
-            RunningGuard guard{running_};
-
-            while(!stop_.load())
-            {
-                U requestData {};
-                auto status = receive(requestData);
-
-                //if no message received, safe to loop
-                //TODO: add logging
-                if(status == ReceivedStatus::NoMessage){continue;}
-
-                T replyData{};
-                auto errorCode = NetworkError::None;
-
-                if(status == ReceivedStatus::InvalidSize)
-                {
-                    errorCode = NetworkError::InvalidRequestSize;
+/** One thread owns the reply socket. stop() may be called from another thread. */
+class responseHandler {
+public:
+    explicit responseHandler(std::string endpoint);
+    ~responseHandler();
+    void run();
+    void run(std::function<std::string(std::string)> func);
+    /** keepRunning is checked between requests and on receive timeouts. */
+    template <typename T, typename U, typename Func>
+    void run(Func&& func, std::function<bool()> keepRunning = {}) {
+        if (running_.exchange(true)) {
+            log::error("responseHandler already running");
+            return;
+        }
+        struct Guard {
+            std::atomic<bool>& running;
+            ~Guard() { running = false; }
+        } guard{running_};
+        stop_ = false;
+        while (!stop_ && (!keepRunning || keepRunning())) {
+            U request{};
+            const auto status = receive(request);
+            if (status == ReceivedStatus::NoMessage)
+                continue;
+            T reply{};
+            auto error = NetworkError::None;
+            if (status == ReceivedStatus::InvalidSize) {
+                error = NetworkError::InvalidRequestSize;
+            } else {
+                try {
+                    reply = std::invoke(func, request);
+                } catch (...) {
+                    error = NetworkError::HandlerError;
                 }
-                else 
-                {
-                    try
-                    {
-                        replyData = std::invoke(std::forward<Func>(func), requestData);
-                    }
-                    catch (...)
-                    {
-                        errorCode = NetworkError::HandlerError;
-                    }
-                }
-                send(replyData, errorCode);
             }
-
+            send(reply, error);
         }
+    }
+    void stop() noexcept { stop_ = true; }
+    /** Configure before run(); finite timeouts allow stop() to finish without new traffic. */
+    void setReceiveTimeout(int milliseconds);
+    int port() const noexcept { return port_; }
 
-        void stop() {if(stop_.load() == false) {stop_.store(true);}}
-
-        void setReceiveTimeout(int milliseconds);
-
-        int port() const {return port_;}
-
-        private:
-        std::unique_ptr<connectionManager> connection_;
-        std::atomic<bool> running_{false};
-        std::atomic<bool> stop_{true};
-        int port_{-1};
-
-        //Actual implementation with underlying library
-        ReceivedStatus receiveRaw(void* data, std::size_t size);
-        ReceivedStatus receiveRaw(Bytes& data);
-        void sendRaw(const void* data, std::size_t size, NetworkError err);
-
-        /** Fixed Size data retrieval */
-        template <typename T>
-        ReceivedStatus receive(T& data)
-        {
-            static_assert(std::is_trivially_copyable_v<T>);
-            return receiveRaw(&data, sizeof(T));
-        }
-
-        /** Fixed Size data sending */
-        template <typename T>
-        void send(const T& data, NetworkError err)
-        {
-            static_assert(std::is_trivially_copyable_v<T>);
-            sendRaw(&data, sizeof(T), err);
-        }
-
-        /** Variable Size data retrieval */
-        ReceivedStatus receive(Bytes& data)
-        {
-            return receiveRaw(data);
-        }
-
-        /** Variable Size data sending */
-        void send(const Bytes& data, NetworkError err)
-        {
-            sendRaw(data.data(), data.size(), err);
-        }
-
-
-
-        /** RAII for tracking if loop is running */
-        struct RunningGuard
-        {
-            std::atomic_bool& running;
-
-            ~RunningGuard()
-            {
-                running.store(false);
-            }
-        };
-
-    };
-
-
-}
+private:
+    std::unique_ptr<connectionManager> connection_;
+    std::atomic<bool> running_{false};
+    std::atomic<bool> stop_{true};
+    int port_ = -1;
+    std::string endpoint_;
+    ReceivedStatus receiveRaw(void* data, std::size_t size);
+    ReceivedStatus receiveRaw(Bytes& data);
+    void sendRaw(const void* data, std::size_t size, NetworkError error);
+    template <typename T> ReceivedStatus receive(T& data) {
+        static_assert(std::is_trivially_copyable_v<T>);
+        return receiveRaw(&data, sizeof(T));
+    }
+    template <typename T> void send(const T& data, NetworkError error) {
+        static_assert(std::is_trivially_copyable_v<T>);
+        sendRaw(&data, sizeof(T), error);
+    }
+    ReceivedStatus receive(Bytes& data) { return receiveRaw(data); }
+    void send(const Bytes& data, NetworkError error) { sendRaw(data.data(), data.size(), error); }
+};
+} // namespace engine::networking

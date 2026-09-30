@@ -39,8 +39,9 @@ add_library(engine STATIC
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
-    src/networking/networking_protocol.cpp
-    src/networking/networking_session.cpp
+    src/networking/protocol.cpp
+    src/networking/server.cpp
+    src/networking/client.cpp
     src/networking/connectionManager.hpp
     src/networking/publisher.cpp
     src/networking/subscriber.cpp

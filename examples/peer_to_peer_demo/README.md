@@ -1,40 +1,39 @@
-# Peer-to-Peer Demo
+# Basic peer to peer demo
 
-This demo shows the direct player-position transport in `PeerClient`. The
-coordinator assigns IDs and sends the peer directory and a shared moving drone.
-Each client sends its square's position directly to the other clients.
+The server registers clients and shares their reachable addresses. Each client
+publishes its own square position directly to the other clients. Player updates
+do not pass through the server. This example uses the engine's `Server` and
+`Client` API in direct peer mode, with a game-specific eight-byte position payload.
 
 ## Build and run
-
-From the repository root:
 
 ```bash
 cmake --preset linux-debug
 cmake --build --preset linux-debug --target peer_to_peer_server peer_to_peer_client
 ```
 
-Start the coordinator in one terminal:
+Start one server and two clients in separate terminals:
 
 ```bash
 ./build/linux-debug/examples/peer_to_peer_demo/peer_to_peer_server
+./build/linux-debug/examples/peer_to_peer_demo/peer_to_peer_client
+./build/linux-debug/examples/peer_to_peer_demo/peer_to_peer_client
 ```
 
-Start two or more clients, each with a different advertised port:
+Move your square with WASD or arrow keys. Each client shows the other client's
+square. Escape closes a client; its square disappears from the remaining window.
+The server reports the number of connected peers. Both clients can use the same
+default settings on one machine because peer ports are allocated automatically.
 
-```bash
-./build/linux-debug/examples/peer_to_peer_demo/peer_to_peer_client tcp://127.0.0.1:7001
-./build/linux-debug/examples/peer_to_peer_demo/peer_to_peer_client tcp://127.0.0.1:7002
-```
+The server listens on port 5555 by default. Use `--port 5556` on the server and
+`--server tcp://127.0.0.1:5556` on each client to change it. On a LAN, pass the
+server's reachable address to `--server` and the client's reachable host address
+to `--advertise`. The advertised address and allocated peer port must be
+reachable by the other clients. This demo assumes trusted peers and does not
+provide NAT traversal.
 
-Move a square with WASD or the arrow keys. The square with a white outline is
-local; the other colored squares are peers. The yellow square is the coordinator's
-shared drone. Press Escape or close the window to stop a client. Press Ctrl+C to
-stop the coordinator. Start another client later, or close one, to see the peer
-directory update.
-
-The default registration endpoint is `tcp://127.0.0.1:5555`; control ports start
-at `6001`. To use other ports, run the server with
-`peer_to_peer_server <registration-port> <first-control-port>`, then pass the
-registration endpoint as the client's second argument. For clients on different
-machines, advertise a host address reachable from the other machines and allow
-the registration, control, and peer ports through the firewall.
+`demoPayload.hpp` encodes the example's two floats; the engine protocol carries
+opaque game bytes. The client sends one position per 60 Hz game tick, ignores its
+own ID and older ticks, and removes a remote square when that peer leaves. The
+first update can be missed while a new subscriber connects; later ticks provide
+fresh state.
