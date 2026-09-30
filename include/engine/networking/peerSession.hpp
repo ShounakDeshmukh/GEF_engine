@@ -42,8 +42,9 @@ namespace engine::networking {
         /** Disconnects every peer, then leaves the server. Idempotent. */
         void leave();
 
-        /** Publishes the entities this peer owns to every connected peer. Call from
-         *  onTick so the rate follows the game's speed. */
+        /** Publishes the entities this peer owns to every connected peer, and asks the
+         *  server for its newest snapshot. Call from onTick so both rates follow the
+         *  game's speed. */
         void publishScene(const Scene& scene, std::int64_t tick);
 
         /** Connects and disconnects peers from roster changes, applies the server's

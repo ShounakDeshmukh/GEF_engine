@@ -66,6 +66,7 @@ namespace engine::networking {
         std::mutex mutex;                           // guards everything below
         std::condition_variable wake;
         std::optional<receivedState> pendingState;
+        bool pollRequested = false;
         std::int64_t lastTick = 0;
         std::uint32_t nextSendSeq = 1;
         std::deque<wireMessage> outbox;             // sent to the server, not yet acknowledged
@@ -144,12 +145,13 @@ namespace engine::networking {
                 if(!first)
                 {
                     wake.wait_for(lock, std::chrono::milliseconds(heartbeatMs.load()),
-                                  [this] { return stopping.load() || pendingState || !outbox.empty(); });
+                                  [this] { return stopping.load() || pendingState || pollRequested || !outbox.empty(); });
                 }
                 first = false;
                 if(stopping.load()) {break;}
 
                 req = buildRequestLocked(RequestKind::Update);
+                pollRequested = false;
                 if(pendingState)
                 {
                     req.hasState = true;
@@ -314,6 +316,16 @@ namespace engine::networking {
         {
             std::lock_guard<std::mutex> lock(impl_->mutex);
             impl_->pendingState = receivedState{impl_->id.load(), tick, std::move(state)};
+            impl_->lastTick = tick;
+        }
+        impl_->wake.notify_one();
+    }
+
+    void sessionClient::requestSnapshot(std::int64_t tick)
+    {
+        {
+            std::lock_guard<std::mutex> lock(impl_->mutex);
+            impl_->pollRequested = true;
             impl_->lastTick = tick;
         }
         impl_->wake.notify_one();

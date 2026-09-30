@@ -80,6 +80,11 @@ namespace engine::networking {
          *  an unsent one. */
         void submitScene(const Scene& scene, std::int64_t tick);
 
+        /** Sim thread only. Wakes the update loop to fetch the newest snapshot without
+         *  sending scene state, so a client that owns nothing (a peerSession, a spectator)
+         *  still receives server state at its own tick rate. submitScene() already does this. */
+        void requestSnapshot(std::int64_t tick);
+
         /** Sim thread only. Applies the newest snapshot, skipping entities this client
          *  owns. Returns false if there was no new snapshot. */
         bool applySnapshot(Scene& scene);

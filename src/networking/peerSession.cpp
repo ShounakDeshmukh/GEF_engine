@@ -120,6 +120,7 @@ namespace engine::networking {
     void peerSession::publishScene(const Scene& scene, std::int64_t tick)
     {
         impl_->peerPublisher.publish(encodeSnapshot(tick, replicator().encodeOwned(scene)), kPeerTopic);
+        impl_->session.requestSnapshot(tick);
     }
 
     void peerSession::applyUpdates(Scene& scene)
