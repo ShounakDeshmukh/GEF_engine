@@ -39,13 +39,10 @@ add_library(engine STATIC
     src/animation.cpp
     src/physics.cpp
     src/inputHandler.cpp
-    src/networking/connectionManager.hpp
     src/networking/publisher.cpp
     src/networking/subscriber.cpp
     src/networking/requestHandler.cpp
     src/networking/responseHandler.cpp
-    src/networking/byteCodec.hpp
-    src/networking/sessionProtocol.hpp
     src/networking/sceneReplicator.cpp
     src/networking/sessionServer.cpp
     src/networking/sessionClient.cpp
