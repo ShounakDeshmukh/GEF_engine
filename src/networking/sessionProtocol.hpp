@@ -5,7 +5,7 @@
  *
  *  join       REQ -> join port     joinRequest   -> joinReply
  *  update     REQ -> update port   updateRequest -> updateReply   (one port per client)
- *  snapshot   PUB kSnapshotTopic   {tick, payload}
+ *  snapshot   rides in updateReply (hasSnapshot, snapshotTick, snapshot)
  *
  *  Messages are reliable: the sender keeps each one until the receiver's ackSeq covers
  *  it and resends it on every exchange until then; the receiver accepts only the next
@@ -21,7 +21,6 @@
 
 namespace engine::networking::protocol {
 
-    inline const std::string kSnapshotTopic = "snapshot/";
     inline const std::string kPeerTopic = "peer/";
 
     enum class RequestKind : std::uint8_t { Join = 1, Update = 2, Leave = 3 };
@@ -51,7 +50,6 @@ namespace engine::networking::protocol {
         ReplyStatus status = ReplyStatus::Rejected;
         ClientId id = kServerId;
         std::int32_t updatePort = 0;
-        std::int32_t snapshotPort = 0;
     };
 
     struct updateRequest {
@@ -71,6 +69,9 @@ namespace engine::networking::protocol {
         std::uint32_t rosterVersion = 0;
         std::vector<rosterEvent> rosterEvents;
         std::vector<wireMessage> messages;
+        bool hasSnapshot = false;
+        std::int64_t snapshotTick = 0;      // server gameTime tick the snapshot was encoded on
+        Bytes snapshot;                     // sceneReplicator bytes (encodeAll)
     };
 
     // ---- encoding -----------------------------------------------------------------
@@ -133,7 +134,6 @@ namespace engine::networking::protocol {
         w.put(r.status);
         w.put(r.id);
         w.put(r.updatePort);
-        w.put(r.snapshotPort);
         return out;
     }
 
@@ -143,7 +143,6 @@ namespace engine::networking::protocol {
         in.get(r.status);
         in.get(r.id);
         in.get(r.updatePort);
-        in.get(r.snapshotPort);
         return in.ok() && in.atEnd();
     }
 
@@ -195,6 +194,8 @@ namespace engine::networking::protocol {
             w.putString(e.client.peerEndpoint);
         }
         putMessages(w, r.messages);
+        w.put(static_cast<std::uint8_t>(r.hasSnapshot));
+        if(r.hasSnapshot) {w.put(r.snapshotTick); w.putBytes(r.snapshot);}
         return out;
     }
 
@@ -217,6 +218,10 @@ namespace engine::networking::protocol {
             r.rosterEvents.push_back(std::move(e));
         }
         getMessages(in, r.messages);
+        std::uint8_t hasSnapshot = 0;
+        in.get(hasSnapshot);
+        r.hasSnapshot = hasSnapshot != 0;
+        if(r.hasSnapshot) {in.get(r.snapshotTick); in.getBytes(r.snapshot);}
         return in.ok() && in.atEnd();
     }
 

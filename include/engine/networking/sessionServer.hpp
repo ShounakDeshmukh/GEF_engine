@@ -16,8 +16,9 @@ namespace engine::networking {
     /** Headless-server side of a client-server session.
      *
      *  Clients join on connectionString. Each accepted client gets a ClientId (1..255,
-     *  never reused within a run) and its own thread and reply socket for updates. The
-     *  server sends snapshots to every client over one publisher.
+     *  never reused within a run) and its own thread and reply socket for updates. Each
+     *  client's snapshot is sent in the reply to that client's own update, on that
+     *  client's thread.
      *
      *  Two kinds of traffic:
      *  - Scene state (applyClientStates / publishScene): latest wins, older values may
@@ -69,7 +70,8 @@ namespace engine::networking {
         sceneReplicator& replicator();
 
         /** Sim thread only. Encodes every replicated entity (server-owned and those
-         *  received from clients) and publishes it; each client keeps only the newest. */
+         *  received from clients) as the current snapshot; each client's thread sends it
+         *  in that client's next reply. Clients keep only the newest. */
         void publishScene(const Scene& scene, std::int64_t tick);
 
         /** Sim thread only. Applies each client's newest submitted scene state and

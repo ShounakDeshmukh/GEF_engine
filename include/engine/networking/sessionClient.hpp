@@ -14,8 +14,8 @@ namespace engine::networking {
 
     /** Client side of a client-server session.
      *
-     *  Owns two threads once started: an update loop (request/reply to this client's
-     *  own server thread) and a snapshot listener (subscriber). Neither follows gameTime,
+     *  Owns one thread once started: an update loop (request/reply to this client's
+     *  own server thread). Snapshots arrive in the replies. It does not follow gameTime,
      *  so pausing the game keeps the heartbeat going; the update rate follows the game
      *  because submitScene() is called from onTick.
      *
@@ -38,9 +38,9 @@ namespace engine::networking {
         /** kServerId until join() succeeds. */
         ClientId id() const;
 
-        /** After join(). Starts the update loop and snapshot listener. */
+        /** After join(). Starts the update loop. */
         void start();
-        /** Tells the server we left, then stops the threads. Idempotent. */
+        /** Tells the server we left, then stops the update thread. Idempotent. */
         void leave();
 
         /** How long each join and update waits for the server's reply. Defaults to

@@ -1,6 +1,5 @@
 #include "engine/networking/sessionClient.hpp"
 #include "engine/networking/requestHandler.hpp"
-#include "engine/networking/subscriber.hpp"
 #include "engine/threading/latestValue.hpp"
 #include "sessionProtocol.hpp"
 
@@ -20,8 +19,7 @@ namespace engine::networking {
     namespace {
         using clock = std::chrono::steady_clock;
 
-        // snapshot listener's receive timeout, and the pause after a failed update:
-        // bounds how long leave() waits for the threads
+        // pause after a failed update: bounds how long leave() waits for the update thread
         constexpr int kPollMs = 50;
 
         std::uint64_t randomToken()
@@ -56,12 +54,10 @@ namespace engine::networking {
 
         std::atomic<ClientId> id{kServerId};
         int updatePort = 0;
-        int snapshotPort = 0;
         std::optional<sceneReplicator> replicator;  // sim thread only; set by join()
 
         std::unique_ptr<requestHandler> updater;    // update thread, then leave()
         std::thread updateThread;
-        std::thread listenThread;
         std::atomic<bool> stopping{false};
         std::atomic<bool> connected{false};
         bool started = false;
@@ -85,7 +81,6 @@ namespace engine::networking {
         updateRequest buildRequestLocked(RequestKind kind);
         ExchangeResult exchange(const updateRequest& request);
         void updateLoop();
-        void listenLoop();
     };
 
     updateRequest sessionClient::impl::buildRequestLocked(RequestKind kind)
@@ -127,6 +122,11 @@ namespace engine::networking {
 
         for(auto& e : reply.rosterEvents) {rosterEvents.push_back(std::move(e));}
         rosterVersion = reply.rosterVersion;
+
+        if(reply.hasSnapshot)
+        {
+            latestSnapshot.publish(receivedState{kServerId, reply.snapshotTick, std::move(reply.snapshot)});
+        }
         return ExchangeResult::Ok;
     }
 
@@ -190,30 +190,6 @@ namespace engine::networking {
         }
     }
 
-    void sessionClient::impl::listenLoop()
-    {
-        try {
-            // built on this thread: a subscriber belongs to the thread that listens
-            subscriber snapshots(endpoint(snapshotPort), kSnapshotTopic);
-            snapshots.setReceiveTimeout(kPollMs);
-
-            Bytes data;
-            while(!stopping.load())
-            {
-                auto status = snapshots.listenBytes(data);
-                if(status == ReceivedStatus::Closed) {break;}
-                if(status != ReceivedStatus::Success) {continue;}
-
-                receivedState snapshot;
-                if(decodeSnapshot(data, snapshot)) {latestSnapshot.publish(std::move(snapshot));}
-            }
-        }
-        catch (const std::exception& e)
-        {
-            log::error("sessionClient snapshot listener failed: {}", e.what());
-        }
-    }
-
 
     sessionClient::sessionClient(std::string connectionString, Bytes hello, std::string peerEndpoint)
         : impl_(std::make_unique<impl>(std::move(connectionString), std::move(hello), std::move(peerEndpoint)))
@@ -234,7 +210,6 @@ namespace engine::networking {
         if(!valid || !decode(bytes, reply) || reply.status != ReplyStatus::Ok) {return false;}
 
         impl_->updatePort = reply.updatePort;
-        impl_->snapshotPort = reply.snapshotPort;
         impl_->replicator.emplace(reply.id);
         impl_->id.store(reply.id);
         return true;
@@ -259,7 +234,6 @@ namespace engine::networking {
         impl_->connected.store(true);
 
         impl_->updateThread = std::thread([this]() { impl_->updateLoop(); });
-        impl_->listenThread = std::thread([this]() { impl_->listenLoop(); });
     }
 
     void sessionClient::leave()
@@ -270,7 +244,6 @@ namespace engine::networking {
         impl_->stopping.store(true);
         impl_->wake.notify_all();
         if(impl_->updateThread.joinable()) {impl_->updateThread.join();}
-        if(impl_->listenThread.joinable()) {impl_->listenThread.join();}
 
         // joined but never started: still free the ClientId on the server
         if(!impl_->updater)
