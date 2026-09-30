@@ -2,7 +2,7 @@
 #include "connectionManager.hpp"
 
 #include <zmq.hpp>
-#include <iostream>
+#include "engine/log.hpp"
 
 namespace engine::networking 
 {
@@ -22,7 +22,7 @@ namespace engine::networking
             }
             catch (const zmq::error_t& e)
             {
-                std::cerr << "requestHandler receive failed: " << e.what() << std::endl;
+                log::error("requestHandler receive failed: {}", e.what());
                 return false;
             }
         }
@@ -38,7 +38,7 @@ namespace engine::networking
         }
         catch (...)
         {
-            std::cerr << "failed to connect to connection" << std::endl;
+            log::error("failed to connect to connection");
             throw std::runtime_error("Failed to create requestHandler"); 
         }
     }
@@ -67,7 +67,7 @@ namespace engine::networking
             connection_->sck.connect(endpoint_);
         }
         catch (const zmq::error_t& e) {
-            std::cerr << "requestHandler reconnect failed: " << e.what() << std::endl;
+            log::error("requestHandler reconnect failed: {}", e.what());
         }
     }
 

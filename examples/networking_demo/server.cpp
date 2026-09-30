@@ -1,5 +1,6 @@
 #include <engine/engine.hpp>
 #include <cstring>
+#include <iostream>
 #include <thread>
 
 #include <engine/entity.hpp>

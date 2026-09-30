@@ -6,7 +6,7 @@
 #include "sessionProtocol.hpp"
 
 #include <atomic>
-#include <iostream>
+#include "engine/log.hpp"
 #include <map>
 #include <thread>
 
@@ -41,7 +41,7 @@ namespace engine::networking {
                 }
                 catch (const std::exception& e)
                 {
-                    std::cerr << "peerSession listener for " << endpoint << " failed: " << e.what() << std::endl;
+                    log::error("peerSession listener for {} failed: {}", endpoint, e.what());
                 }
             }
         };

@@ -3,7 +3,7 @@
 
 #include <zmq.hpp>
 #include <string>
-#include <iostream>
+#include "engine/log.hpp"
 
 
 namespace engine::networking {
@@ -17,7 +17,7 @@ namespace engine::networking {
         }
         catch (...)
         {
-            std::cerr << "failed to connect to connection" << std::endl;
+            log::error("failed to connect to connection");
             throw std::runtime_error("Failed to create subscriber"); 
         }
     }
@@ -34,7 +34,7 @@ namespace engine::networking {
         }
         catch (...)
         {
-            std::cerr << "failed to connect to " << endpoint << std::endl;
+            log::error("failed to connect to {}", endpoint);
             return false;
         }
         return true;
@@ -47,7 +47,7 @@ namespace engine::networking {
         }
         catch (...)
         {
-            std::cerr << "failed to disconnect from " << endpoint << std::endl;
+            log::error("failed to disconnect from {}", endpoint);
             return false;
         }
         return true;
@@ -100,7 +100,7 @@ namespace engine::networking {
     {
         if(running_.exchange(true))
         {
-            std::cerr << "subscriber already listening on another thread" << std::endl;
+            log::error("subscriber already listening on another thread");
             return ReceivedStatus::NoMessage;
         }
 
@@ -119,7 +119,7 @@ namespace engine::networking {
         {
             // EINTR: a signal (e.g. SDL's SIGINT handler) interrupted the wait
             if(e.num() == EINTR) {return ReceivedStatus::NoMessage;}
-            std::cerr << "subscriber receive failed: " << e.what() << std::endl;
+            log::error("subscriber receive failed: {}", e.what());
             return ReceivedStatus::Closed;
         }
 

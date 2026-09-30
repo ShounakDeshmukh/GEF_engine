@@ -2,7 +2,7 @@
 #include "connectionManager.hpp"
 
 #include <zmq.hpp>
-#include <iostream>
+#include "engine/log.hpp"
 
 namespace engine::networking {
 
@@ -17,7 +17,7 @@ namespace engine::networking {
         }
         catch (...)
         {
-            std::cerr << "failed to bind to connection" << std::endl;
+            log::error("failed to bind to connection");
             throw std::runtime_error("Failed to create responseHandler"); 
         }
     }
@@ -32,7 +32,7 @@ namespace engine::networking {
     {
         if(running_.exchange(true))
         {
-            std::cerr << "responseHandler already running" << std::endl;
+            log::error("responseHandler already running");
             return;
         }
 
@@ -45,7 +45,7 @@ namespace engine::networking {
             if(status == ReceivedStatus::Closed) {break;}
 
             std::string request_str(reinterpret_cast<const char*>(request.data()), request.size());
-            std::cout << "Received request from client: " << request_str << std::endl;
+            log::debug("responseHandler received: {}", request_str);
 
             std::string reply_str = "Hello Client: you sent " + request_str;
             sendRaw(reply_str.data(), reply_str.size(), NetworkError::None);
@@ -58,7 +58,7 @@ namespace engine::networking {
 
         if(running_.exchange(true))
         {
-            std::cerr << "responseHandler already running" << std::endl;
+            log::error("responseHandler already running");
             return;
         }
 
@@ -112,7 +112,7 @@ namespace engine::networking {
         {
             // EINTR: a signal (e.g. SDL's SIGINT handler) interrupted the wait
             if(e.num() == EINTR) {return ReceivedStatus::NoMessage;}
-            std::cerr << "responseHandler receive failed: " << e.what() << std::endl;
+            log::error("responseHandler receive failed: {}", e.what());
             return ReceivedStatus::Closed;
         }
 
@@ -131,7 +131,7 @@ namespace engine::networking {
         catch (const zmq::error_t& e)
         {
             // a later receive reports the broken socket as Closed
-            std::cerr << "responseHandler send failed: " << e.what() << std::endl;
+            log::error("responseHandler send failed: {}", e.what());
         }
     }
 

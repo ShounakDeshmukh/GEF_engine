@@ -2,7 +2,7 @@
 #include "connectionManager.hpp"
 
 #include <zmq.hpp>
-#include <iostream>
+#include "engine/log.hpp"
 
 
 namespace engine::networking {
@@ -17,7 +17,7 @@ namespace engine::networking {
         }
         catch (...)
         {
-            std::cerr << "failed to bind to connection" << std::endl;
+            log::error("failed to bind to connection");
             throw std::runtime_error("Failed to create publisher"); 
         }
     }

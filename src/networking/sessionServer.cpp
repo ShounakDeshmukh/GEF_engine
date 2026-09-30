@@ -6,7 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <iostream>
+#include "engine/log.hpp"
 #include <map>
 #include <mutex>
 #include <thread>
@@ -271,7 +271,7 @@ namespace engine::networking {
     {
         if(impl_->started)
         {
-            std::cerr << "sessionServer already started" << std::endl;
+            log::error("sessionServer already started");
             return;
         }
         impl_->started = true;

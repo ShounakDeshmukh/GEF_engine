@@ -8,7 +8,7 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
-#include <iostream>
+#include "engine/log.hpp"
 #include <mutex>
 #include <random>
 #include <thread>
@@ -162,7 +162,7 @@ namespace engine::networking {
             auto result = exchange(req);
             if(result == ExchangeResult::Dropped)
             {
-                std::cerr << "sessionClient: server dropped this client" << std::endl;
+                log::warn("sessionClient: server dropped client {}", id.load());
                 connected.store(false);
                 break;
             }
@@ -210,7 +210,7 @@ namespace engine::networking {
         }
         catch (const std::exception& e)
         {
-            std::cerr << "sessionClient snapshot listener failed: " << e.what() << std::endl;
+            log::error("sessionClient snapshot listener failed: {}", e.what());
         }
     }
 
@@ -249,7 +249,7 @@ namespace engine::networking {
     {
         if(impl_->id.load() == kServerId)
         {
-            std::cerr << "sessionClient::start() before a successful join()" << std::endl;
+            log::error("sessionClient::start() before a successful join()");
             return;
         }
         if(impl_->started || impl_->left) {return;}
