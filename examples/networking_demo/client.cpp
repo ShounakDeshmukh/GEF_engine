@@ -33,7 +33,12 @@ int main(int argv, char* argc[]) {
 
         while(true)
         {
-            auto i = sub.listenT<engine::Transform>();
+            auto [i, valid] = sub.listenT<engine::Transform>();
+            if(!valid)
+            {
+                std::cerr << "template subscription failed" << std::endl;
+                continue;
+            }
             std::cout << i;
         }
 

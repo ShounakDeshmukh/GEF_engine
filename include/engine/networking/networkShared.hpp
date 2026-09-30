@@ -14,8 +14,9 @@ namespace engine::networking {
 
     enum class ReceivedStatus {
         Success, 
-        NoMessage,
-        InvalidSize
+        NoMessage,      // timed out or interrupted; safe to receive again
+        InvalidSize,
+        Closed          // socket or context shut down; stop receiving
     };
 
 }

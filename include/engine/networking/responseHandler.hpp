@@ -19,6 +19,8 @@ namespace engine::networking {
     class responseHandler {
         public:
         responseHandler(std::string connectionString);
+
+        /** stop() and join the thread inside run() first. */
         ~responseHandler();
 
         /** Enforces single thread usage */
@@ -36,8 +38,7 @@ namespace engine::networking {
                 std::cerr << "responseHandler already running" << std::endl;
                 return;
             }
-            stop_.store(false);
-            RunningGuard guard{running_};
+            RunningGuard guard{running_, stop_};
 
             while(!stop_.load())
             {
@@ -47,6 +48,7 @@ namespace engine::networking {
                 //if no message received, safe to loop
                 //TODO: add logging
                 if(status == ReceivedStatus::NoMessage){continue;}
+                if(status == ReceivedStatus::Closed){break;}
 
                 T replyData{};
                 auto errorCode = NetworkError::None;
@@ -71,8 +73,13 @@ namespace engine::networking {
 
         }
 
+        /** threadsafe. Takes effect between requests, so without setReceiveTimeout() a
+         *  run() blocked waiting for a request never returns. A stop() before run()
+         *  makes that run() return immediately. */
         void stop() {if(stop_.load() == false) {stop_.store(true);}}
 
+        /** Call before run(), not while it is running. Required for stop() to take effect
+         *  when no requests arrive. */
         void setReceiveTimeout(int milliseconds);
 
         int port() const {return port_;}
@@ -80,7 +87,7 @@ namespace engine::networking {
         private:
         std::unique_ptr<connectionManager> connection_;
         std::atomic<bool> running_{false};
-        std::atomic<bool> stop_{true};
+        std::atomic<bool> stop_{false};
         int port_{-1};
 
         //Actual implementation with underlying library
@@ -118,13 +125,16 @@ namespace engine::networking {
 
 
 
-        /** RAII for tracking if loop is running */
+        /** RAII for tracking if loop is running. Clears stop on exit, so a stop()
+         *  issued before run() is consumed by that run() rather than lost. */
         struct RunningGuard
         {
             std::atomic_bool& running;
+            std::atomic_bool& stop;
 
             ~RunningGuard()
             {
+                stop.store(false);
                 running.store(false);
             }
         };

@@ -36,14 +36,15 @@ namespace engine::networking {
             return;
         }
 
-        RunningGuard guard{running_};
-        stop_.store(false);
+        RunningGuard guard{running_, stop_};
 
         while (!stop_.load()) {
-            zmq::message_t request;
-            connection_->sck.recv(request, zmq::recv_flags::none);
+            Bytes request;
+            auto status = receiveRaw(request);
+            if(status == ReceivedStatus::NoMessage) {continue;}
+            if(status == ReceivedStatus::Closed) {break;}
 
-            std::string request_str(static_cast<char*>(request.data()), request.size());
+            std::string request_str(reinterpret_cast<const char*>(request.data()), request.size());
             std::cout << "Received request from client: " << request_str << std::endl;
 
             std::string reply_str = "Hello Client: you sent " + request_str;
@@ -60,16 +61,16 @@ namespace engine::networking {
             std::cerr << "responseHandler already running" << std::endl;
             return;
         }
-        stop_.store(false);
 
-        RunningGuard guard{running_};
+        RunningGuard guard{running_, stop_};
 
         while (!stop_.load()) {
-            zmq::message_t request;
-            auto status = connection_->sck.recv(request, zmq::recv_flags::none);
-            if(!status){continue;}
+            Bytes request;
+            auto status = receiveRaw(request);
+            if(status == ReceivedStatus::NoMessage) {continue;}
+            if(status == ReceivedStatus::Closed) {break;}
 
-            std::string request_str(static_cast<char*>(request.data()), request.size());
+            std::string request_str(reinterpret_cast<const char*>(request.data()), request.size());
 
             std::string reply_str;
             auto err = NetworkError::None;
@@ -80,10 +81,7 @@ namespace engine::networking {
             {
                 err = NetworkError::HandlerError;
             }
-            zmq::message_t reply(reply_str.size());
-            memcpy(reply.data(), reply_str.data(), reply_str.size());
-            connection_->sck.send(zmq::buffer(&err, sizeof(err)), zmq::send_flags::sndmore);
-            connection_->sck.send(reply, zmq::send_flags::none);
+            sendRaw(reply_str.data(), reply_str.size(), err);
         }
     }
 
@@ -95,10 +93,9 @@ namespace engine::networking {
 
     ReceivedStatus responseHandler::receiveRaw(void* data, std::size_t size)
     {
-        zmq::message_t request;
-        auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
-
-        if(!recvVal) {return ReceivedStatus::NoMessage;}
+        Bytes request;
+        auto status = receiveRaw(request);
+        if(status != ReceivedStatus::Success) {return status;}
         if(request.size() != size) {return ReceivedStatus::InvalidSize;}
         memcpy(data, request.data(), size);
         return ReceivedStatus::Success;
@@ -107,9 +104,18 @@ namespace engine::networking {
     ReceivedStatus responseHandler::receiveRaw(Bytes& data)
     {
         zmq::message_t request;
-        auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
+        try {
+            auto recvVal = connection_->sck.recv(request, zmq::recv_flags::none);
+            if(!recvVal) {return ReceivedStatus::NoMessage;}
+        }
+        catch (const zmq::error_t& e)
+        {
+            // EINTR: a signal (e.g. SDL's SIGINT handler) interrupted the wait
+            if(e.num() == EINTR) {return ReceivedStatus::NoMessage;}
+            std::cerr << "responseHandler receive failed: " << e.what() << std::endl;
+            return ReceivedStatus::Closed;
+        }
 
-        if(!recvVal) {return ReceivedStatus::NoMessage;}
         data.resize(request.size());
         memcpy(data.data(), request.data(), request.size());
         return ReceivedStatus::Success;
@@ -118,8 +124,15 @@ namespace engine::networking {
 
     void responseHandler::sendRaw(const void* data, std::size_t size, NetworkError err)
     {
-        connection_->sck.send(zmq::buffer(&err, sizeof(err)), zmq::send_flags::sndmore);
-        connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
+        try {
+            connection_->sck.send(zmq::buffer(&err, sizeof(err)), zmq::send_flags::sndmore);
+            connection_->sck.send(zmq::buffer(data, size), zmq::send_flags::none);
+        }
+        catch (const zmq::error_t& e)
+        {
+            // a later receive reports the broken socket as Closed
+            std::cerr << "responseHandler send failed: " << e.what() << std::endl;
+        }
     }
 
 
