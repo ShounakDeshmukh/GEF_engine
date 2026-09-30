@@ -69,6 +69,7 @@ namespace engine::networking {
 
         Bytes handleJoin(const Bytes& request);
         Bytes handleUpdate(ClientId id, const Bytes& request);
+        std::vector<receivedState> drainStates();
         void addRosterEventLocked(RosterChange change, const clientInfo& client);
         void retireLocked(ClientId id);
         void watchdog();
@@ -112,7 +113,7 @@ namespace engine::networking {
             return encode(reply);
         }
         slot->handler->setReceiveTimeout(kPollMs);
-        slot->info = {nextId++, std::move(req.hello)};
+        slot->info = {nextId++, std::move(req.hello), std::move(req.peerEndpoint)};
         slot->token = req.token;
         slot->lastSeen = clock::now();
 
@@ -185,6 +186,16 @@ namespace engine::networking {
 
         if(req.kind == RequestKind::Leave) {retireLocked(id);}
         return encode(reply);
+    }
+
+    std::vector<receivedState> sessionServer::impl::drainStates()
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        std::vector<receivedState> drained;
+        drained.reserve(states.size());
+        for(auto& [id, state] : states) {drained.push_back(std::move(state));}
+        states.clear();
+        return drained;
     }
 
     void sessionServer::impl::addRosterEventLocked(RosterChange change, const clientInfo& client)
@@ -304,21 +315,6 @@ namespace engine::networking {
         impl_->clientTimeoutMs.store(milliseconds);
     }
 
-    void sessionServer::publishSnapshot(ByteView snapshot, std::int64_t tick)
-    {
-        impl_->snapshotPublisher.publish(encodeSnapshot(tick, snapshot), kSnapshotTopic);
-    }
-
-    std::vector<receivedState> sessionServer::drainStates()
-    {
-        std::lock_guard<std::mutex> lock(impl_->mutex);
-        std::vector<receivedState> drained;
-        drained.reserve(impl_->states.size());
-        for(auto& [id, state] : impl_->states) {drained.push_back(std::move(state));}
-        impl_->states.clear();
-        return drained;
-    }
-
     void sessionServer::send(ClientId to, std::uint16_t type, Bytes payload, std::int64_t tick)
     {
         std::lock_guard<std::mutex> lock(impl_->mutex);
@@ -369,12 +365,12 @@ namespace engine::networking {
 
     void sessionServer::publishScene(const Scene& scene, std::int64_t tick)
     {
-        publishSnapshot(impl_->replicator.encodeAll(scene), tick);
+        impl_->snapshotPublisher.publish(encodeSnapshot(tick, impl_->replicator.encodeAll(scene)), kSnapshotTopic);
     }
 
     void sessionServer::applyClientStates(Scene& scene)
     {
-        for(auto& state : drainStates())
+        for(auto& state : impl_->drainStates())
         {
             impl_->replicator.apply(scene, state.payload, state.from);
         }

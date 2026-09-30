@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "session.hpp"
@@ -18,16 +17,18 @@ namespace engine::networking {
      *  Owns two threads once started: an update loop (request/reply to this client's
      *  own server thread) and a snapshot listener (subscriber). Neither follows gameTime,
      *  so pausing the game keeps the heartbeat going; the update rate follows the game
-     *  because submit() is called from onTick.
+     *  because submitScene() is called from onTick.
      *
-     *  @thread_safety Bytes-level calls are threadsafe. Scene-level calls and replicator()
-     *  touch the Scene and must come from the thread that owns it (the sim thread).
+     *  @thread_safety Message and roster calls are threadsafe. Scene calls and
+     *  replicator() touch the Scene and must come from the thread that owns it (the sim
+     *  thread).
      *  Construct, join(), start() and leave() from the owning thread. */
     class sessionClient {
         public:
         /** connectionString is the server's join endpoint, e.g. "tcp://localhost:5555".
-         *  hello is forwarded to every client's roster. */
-        sessionClient(std::string connectionString, Bytes hello = {});
+         *  hello and peerEndpoint are forwarded to every client's roster; peerEndpoint is
+         *  where other clients reach this one directly (see peerSession). */
+        sessionClient(std::string connectionString, Bytes hello = {}, std::string peerEndpoint = "");
         ~sessionClient();                           // leave()
 
         /** Blocking handshake, one attempt of at most the reply timeout. Safe to call
@@ -42,24 +43,17 @@ namespace engine::networking {
         /** Tells the server we left, then stops the threads. Idempotent. */
         void leave();
 
-        /** Before start(). */
+        /** How long each join and update waits for the server's reply. Defaults to
+         *  requestHandler::kDefaultReplyTimeoutMs; takes effect from the next request. */
         void setReplyTimeout(int milliseconds);
-        /** Before start(). An empty update is sent after this long without a submit()
-         *  or send(), so a paused client is not timed out. */
+        /** An empty update is sent after this long without a submitScene() or send(),
+         *  so a paused client is not timed out. Defaults to kDefaultHeartbeatMs; takes
+         *  effect from the next wait. */
         void setHeartbeat(int milliseconds);
 
         /** False before start(), after leave(), and once the server has not replied for
          *  kDefaultClientTimeoutMs or has dropped this client. */
         bool connected() const;
-
-        // ---- state ----------------------------------------------------------------
-
-        /** threadsafe, non-blocking. One update is in flight at a time; a newer submit
-         *  replaces an unsent one. */
-        void submit(ByteView state, std::int64_t tick);
-
-        /** threadsafe. Newest server snapshot not yet taken, or nullopt. */
-        std::optional<receivedState> takeSnapshot();
 
         // ---- messages -------------------------------------------------------------
 
@@ -81,7 +75,9 @@ namespace engine::networking {
          *  (its player) here. */
         sceneReplicator& replicator();
 
-        /** Sim thread only. Encodes the entities this client owns and submits them. */
+        /** Sim thread only. Encodes the entities this client owns and submits them.
+         *  Non-blocking: one update is in flight at a time, and a newer submit replaces
+         *  an unsent one. */
         void submitScene(const Scene& scene, std::int64_t tick);
 
         /** Sim thread only. Applies the newest snapshot, skipping entities this client

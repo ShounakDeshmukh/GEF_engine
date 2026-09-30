@@ -49,6 +49,7 @@ add_library(engine STATIC
     src/networking/sceneReplicator.cpp
     src/networking/sessionServer.cpp
     src/networking/sessionClient.cpp
+    src/networking/peerSession.cpp
 )
 add_library(engine::engine ALIAS engine)
 

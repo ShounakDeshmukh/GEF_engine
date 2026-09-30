@@ -22,9 +22,17 @@
 namespace engine::networking::protocol {
 
     inline const std::string kSnapshotTopic = "snapshot/";
+    inline const std::string kPeerTopic = "peer/";
 
     enum class RequestKind : std::uint8_t { Join = 1, Update = 2, Leave = 3 };
     enum class ReplyStatus : std::uint8_t { Ok = 0, Rejected = 1, UnknownClient = 2 };
+
+    /** Latest-wins state: a client's submitted scene, or the server's snapshot. */
+    struct receivedState {
+        ClientId from = kServerId;
+        std::int64_t tick = 0;              // sender's gameTime tick
+        Bytes payload;
+    };
 
     struct wireMessage {
         std::uint32_t seq = 0;
@@ -36,6 +44,7 @@ namespace engine::networking::protocol {
     struct joinRequest {
         std::uint64_t token = 0;
         Bytes hello;
+        std::string peerEndpoint;
     };
 
     struct joinReply {
@@ -102,6 +111,7 @@ namespace engine::networking::protocol {
         w.put(RequestKind::Join);
         w.put(r.token);
         w.putBytes(r.hello);
+        w.putString(r.peerEndpoint);
         return out;
     }
 
@@ -112,6 +122,7 @@ namespace engine::networking::protocol {
         in.get(kind);
         in.get(r.token);
         in.getBytes(r.hello);
+        in.getString(r.peerEndpoint);
         return in.ok() && in.atEnd() && kind == RequestKind::Join;
     }
 
@@ -181,6 +192,7 @@ namespace engine::networking::protocol {
             w.put(e.change);
             w.put(e.client.id);
             w.putBytes(e.client.hello);
+            w.putString(e.client.peerEndpoint);
         }
         putMessages(w, r.messages);
         return out;
@@ -201,6 +213,7 @@ namespace engine::networking::protocol {
             in.get(e.change);
             in.get(e.client.id);
             in.getBytes(e.client.hello);
+            in.getString(e.client.peerEndpoint);
             r.rosterEvents.push_back(std::move(e));
         }
         getMessages(in, r.messages);

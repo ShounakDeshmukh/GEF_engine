@@ -20,11 +20,13 @@ namespace engine::networking {
      *  server sends snapshots to every client over one publisher.
      *
      *  Two kinds of traffic:
-     *  - State (submit / publishSnapshot): latest wins, older values may be skipped.
+     *  - Scene state (applyClientStates / publishScene): latest wins, older values may
+     *    be skipped.
      *  - Messages (send / broadcast): every one delivered, in order, per client.
      *
-     *  @thread_safety Bytes-level calls are threadsafe. Scene-level calls and replicator()
-     *  touch the Scene and must come from the thread that owns it (the sim thread).
+     *  @thread_safety Message and roster calls are threadsafe. Scene calls and
+     *  replicator() touch the Scene and must come from the thread that owns it (the sim
+     *  thread).
      *  Construct, start() and stop() from the owning thread. */
     class sessionServer {
         public:
@@ -40,16 +42,9 @@ namespace engine::networking {
         /** Idempotent. Joins all network threads. */
         void stop();
 
-        /** Before start(). A client silent this long is removed (RosterChange::Left). */
+        /** A client silent this long is removed (RosterChange::Left). Defaults to
+         *  kDefaultClientTimeoutMs; takes effect immediately. */
         void setClientTimeout(int milliseconds);
-
-        // ---- state ----------------------------------------------------------------
-
-        /** threadsafe. Publishes to every client; each keeps only the newest. */
-        void publishSnapshot(ByteView snapshot, std::int64_t tick);
-
-        /** threadsafe. Newest state each client submitted since the last drain, one per client. */
-        std::vector<receivedState> drainStates();
 
         // ---- messages -------------------------------------------------------------
 
@@ -74,11 +69,11 @@ namespace engine::networking {
         sceneReplicator& replicator();
 
         /** Sim thread only. Encodes every replicated entity (server-owned and those
-         *  received from clients) and publishes it. */
+         *  received from clients) and publishes it; each client keeps only the newest. */
         void publishScene(const Scene& scene, std::int64_t tick);
 
         /** Sim thread only. Applies each client's newest submitted scene state and
-         *  destroys entities owned by clients that left. Consumes drainStates(). */
+         *  destroys entities owned by clients that left. */
         void applyClientStates(Scene& scene);
 
         private:

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <type_traits>
 
 #include "engine/networking/bytes.hpp"
@@ -31,6 +32,11 @@ namespace engine::networking {
         {
             put(static_cast<std::uint32_t>(data.size()));
             out_.insert(out_.end(), data.begin(), data.end());
+        }
+
+        void putString(const std::string& s)
+        {
+            putBytes(ByteView{reinterpret_cast<const std::byte*>(s.data()), s.size()});
         }
 
         private:
@@ -60,6 +66,14 @@ namespace engine::networking {
             if(in_.size() - pos_ < size) {ok_ = false; return false;}
             data.assign(in_.begin() + pos_, in_.begin() + pos_ + size);
             pos_ += size;
+            return true;
+        }
+
+        bool getString(std::string& s)
+        {
+            Bytes data;
+            if(!getBytes(data)) {return false;}
+            s.assign(reinterpret_cast<const char*>(data.data()), data.size());
             return true;
         }
 

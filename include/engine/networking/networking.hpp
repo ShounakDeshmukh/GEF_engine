@@ -7,3 +7,4 @@
 #include "sceneReplicator.hpp"
 #include "sessionServer.hpp"
 #include "sessionClient.hpp"
+#include "peerSession.hpp"

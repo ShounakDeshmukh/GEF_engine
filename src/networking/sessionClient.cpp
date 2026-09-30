@@ -37,19 +37,22 @@ namespace engine::networking {
 
     struct sessionClient::impl {
 
-        impl(std::string connectionString, Bytes hello)
+        impl(std::string connectionString, Bytes hello, std::string peerEndpoint)
             : endpointPrefix(connectionString.substr(0, connectionString.rfind(':') + 1)),
               hello(std::move(hello)),
+              peerEndpoint(std::move(peerEndpoint)),
               joinRequester(std::move(connectionString)),
               token(randomToken())
         {}
 
         std::string endpointPrefix;             // "tcp://host:", reused for the server's ports
         Bytes hello;
+        std::string peerEndpoint;
         requestHandler joinRequester;
         std::uint64_t token;                    // same on every join() retry
-        int replyTimeoutMs = requestHandler::kDefaultReplyTimeoutMs;
-        int heartbeatMs = kDefaultHeartbeatMs;
+        std::atomic<int> replyTimeoutMs{requestHandler::kDefaultReplyTimeoutMs};
+        std::atomic<int> heartbeatMs{kDefaultHeartbeatMs};
+        int appliedReplyTimeoutMs = requestHandler::kDefaultReplyTimeoutMs;  // on updater
 
         std::atomic<ClientId> id{kServerId};
         int updatePort = 0;
@@ -99,6 +102,13 @@ namespace engine::networking {
 
     ExchangeResult sessionClient::impl::exchange(const updateRequest& request)
     {
+        // setReplyTimeout() may be called at any time; apply it between requests
+        if(int timeout = replyTimeoutMs.load(); timeout != appliedReplyTimeoutMs)
+        {
+            updater->setReplyTimeout(timeout);
+            appliedReplyTimeoutMs = timeout;
+        }
+
         auto [bytes, valid] = updater->send(encode(request));
         updateReply reply;
         if(!valid || !decode(bytes, reply)) {return ExchangeResult::Failed;}
@@ -133,7 +143,7 @@ namespace engine::networking {
                 // wakes for new state or messages; otherwise times out into a heartbeat
                 if(!first)
                 {
-                    wake.wait_for(lock, std::chrono::milliseconds(heartbeatMs),
+                    wake.wait_for(lock, std::chrono::milliseconds(heartbeatMs.load()),
                                   [this] { return stopping.load() || pendingState || !outbox.empty(); });
                 }
                 first = false;
@@ -205,8 +215,8 @@ namespace engine::networking {
     }
 
 
-    sessionClient::sessionClient(std::string connectionString, Bytes hello)
-        : impl_(std::make_unique<impl>(std::move(connectionString), std::move(hello)))
+    sessionClient::sessionClient(std::string connectionString, Bytes hello, std::string peerEndpoint)
+        : impl_(std::make_unique<impl>(std::move(connectionString), std::move(hello), std::move(peerEndpoint)))
     {}
 
     sessionClient::~sessionClient()
@@ -218,7 +228,7 @@ namespace engine::networking {
     {
         if(impl_->id.load() != kServerId) {return true;}
 
-        joinRequest req{impl_->token, impl_->hello};
+        joinRequest req{impl_->token, impl_->hello, impl_->peerEndpoint};
         auto [bytes, valid] = impl_->joinRequester.send(encode(req));
         joinReply reply;
         if(!valid || !decode(bytes, reply) || reply.status != ReplyStatus::Ok) {return false;}
@@ -246,7 +256,6 @@ namespace engine::networking {
         impl_->started = true;
 
         impl_->updater = std::make_unique<requestHandler>(impl_->endpoint(impl_->updatePort));
-        impl_->updater->setReplyTimeout(impl_->replyTimeoutMs);
         impl_->connected.store(true);
 
         impl_->updateThread = std::thread([this]() { impl_->updateLoop(); });
@@ -267,7 +276,6 @@ namespace engine::networking {
         if(!impl_->updater)
         {
             impl_->updater = std::make_unique<requestHandler>(impl_->endpoint(impl_->updatePort));
-            impl_->updater->setReplyTimeout(impl_->replyTimeoutMs);
         }
 
         updateRequest req;
@@ -282,33 +290,18 @@ namespace engine::networking {
 
     void sessionClient::setReplyTimeout(int milliseconds)
     {
-        impl_->replyTimeoutMs = milliseconds;
+        impl_->replyTimeoutMs.store(milliseconds);
         impl_->joinRequester.setReplyTimeout(milliseconds);
     }
 
     void sessionClient::setHeartbeat(int milliseconds)
     {
-        impl_->heartbeatMs = milliseconds;
+        impl_->heartbeatMs.store(milliseconds);
     }
 
     bool sessionClient::connected() const
     {
         return impl_->connected.load();
-    }
-
-    void sessionClient::submit(ByteView state, std::int64_t tick)
-    {
-        {
-            std::lock_guard<std::mutex> lock(impl_->mutex);
-            impl_->pendingState = receivedState{impl_->id.load(), tick, Bytes(state.begin(), state.end())};
-            impl_->lastTick = tick;
-        }
-        impl_->wake.notify_one();
-    }
-
-    std::optional<receivedState> sessionClient::takeSnapshot()
-    {
-        return impl_->latestSnapshot.take();
     }
 
     void sessionClient::send(std::uint16_t type, Bytes payload, std::int64_t tick)
@@ -344,12 +337,18 @@ namespace engine::networking {
 
     void sessionClient::submitScene(const Scene& scene, std::int64_t tick)
     {
-        submit(replicator().encodeOwned(scene), tick);
+        Bytes state = replicator().encodeOwned(scene);
+        {
+            std::lock_guard<std::mutex> lock(impl_->mutex);
+            impl_->pendingState = receivedState{impl_->id.load(), tick, std::move(state)};
+            impl_->lastTick = tick;
+        }
+        impl_->wake.notify_one();
     }
 
     bool sessionClient::applySnapshot(Scene& scene)
     {
-        auto snapshot = takeSnapshot();
+        auto snapshot = impl_->latestSnapshot.take();
         if(!snapshot) {return false;}
         return replicator().apply(scene, snapshot->payload, kServerId);
     }
