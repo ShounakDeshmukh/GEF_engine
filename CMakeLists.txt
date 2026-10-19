@@ -70,6 +70,7 @@ target_link_libraries(engine
         SDL3_ttf::SDL3_ttf
         spdlog::spdlog
         cppzmq-static
+        nlohmann_json::nlohmann_json
 )
 
 target_compile_options(engine PRIVATE

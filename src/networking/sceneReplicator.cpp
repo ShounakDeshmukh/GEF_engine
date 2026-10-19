@@ -3,6 +3,7 @@
 #include "byteCodec.hpp"
 
 #include <cassert>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 namespace engine::networking {
@@ -44,6 +45,132 @@ namespace engine::networking {
             }
             if(r.mask & kHasExtra) {in.getBytes(r.extra);}
             return in.ok();
+        }
+
+        Bytes writeBinary(const std::vector<entityRecord>& records)
+        {
+            Bytes out;
+            byteWriter w(out);
+            w.put(kFormatVersion);
+            w.put(static_cast<std::uint32_t>(records.size()));
+            for(const auto& r : records)
+            {
+                w.put(r.id);
+                w.put(r.mask);
+                w.put(r.transform);
+                if(r.mask & kHasRigidBody) {w.put(r.rigidBody);}
+                if(r.mask & kHasCollider) {w.put(r.collider);}
+                if(r.mask & kHasShape)
+                {
+                    w.put(r.shapeSize);
+                    w.put(r.shapeColor);
+                    w.put(r.shapeTiled);
+                }
+                if(r.mask & kHasExtra) {w.putBytes(r.extra);}
+            }
+            return out;
+        }
+
+        bool readBinary(ByteView snapshot, std::vector<entityRecord>& records)
+        {
+            byteReader in(snapshot);
+            std::uint8_t version = 0;
+            std::uint32_t count = 0;
+            in.get(version);
+            in.get(count);
+            if(!in.ok() || version != kFormatVersion) {return false;}
+
+            for(std::uint32_t i = 0; i < count; ++i)
+            {
+                entityRecord r;
+                if(!readRecord(in, r)) {return false;}
+                records.push_back(std::move(r));
+            }
+            return in.atEnd();
+        }
+
+        nlohmann::json toJson(glm::vec2 v) {return nlohmann::json::array({v.x, v.y});}
+
+        glm::vec2 vec2From(const nlohmann::json& j)
+        {
+            return {j.at(0).get<float>(), j.at(1).get<float>()};
+        }
+
+        Bytes writeJson(const std::vector<entityRecord>& records)
+        {
+            auto entities = nlohmann::json::array();
+            for(const auto& r : records)
+            {
+                nlohmann::json e = {
+                    {"id", r.id},
+                    {"m", r.mask},
+                    {"t", {{"p", toJson(r.transform.position)}, {"s", toJson(r.transform.scale)}}},
+                };
+                if(r.mask & kHasRigidBody) {e["rb"] = toJson(r.rigidBody.velocity);}
+                if(r.mask & kHasCollider) {e["c"] = toJson(r.collider.size);}
+                if(r.mask & kHasShape)
+                {
+                    const Color& c = r.shapeColor;
+                    e["sh"] = {{"s", toJson(r.shapeSize)},
+                               {"c", {c.r, c.g, c.b, c.a}},
+                               {"t", r.shapeTiled != 0}};
+                }
+                if(r.mask & kHasExtra)
+                {
+                    auto& x = e["x"] = nlohmann::json::array();
+                    for(std::byte b : r.extra) {x.push_back(std::to_integer<int>(b));}
+                }
+                entities.push_back(std::move(e));
+            }
+            const nlohmann::json doc = {{"v", kFormatVersion}, {"e", std::move(entities)}};
+            const std::string text = doc.dump();
+            const auto* begin = reinterpret_cast<const std::byte*>(text.data());
+            return Bytes(begin, begin + text.size());
+        }
+
+        bool readJson(ByteView snapshot, std::vector<entityRecord>& records)
+        {
+            const auto* begin = reinterpret_cast<const char*>(snapshot.data());
+            const auto doc = nlohmann::json::parse(begin, begin + snapshot.size(), nullptr, false);
+            if(doc.is_discarded()) {return false;}
+
+            // .at() and get<>() throw on missing keys and wrong types
+            try
+            {
+                if(doc.at("v").get<int>() != kFormatVersion) {return false;}
+                if(!doc.at("e").is_array()) {return false;}
+                for(const auto& e : doc.at("e"))
+                {
+                    entityRecord r;
+                    r.id = e.at("id").get<NetId>();
+                    r.mask = e.at("m").get<std::uint8_t>();
+                    r.transform.position = vec2From(e.at("t").at("p"));
+                    r.transform.scale = vec2From(e.at("t").at("s"));
+                    if(r.mask & kHasRigidBody) {r.rigidBody.velocity = vec2From(e.at("rb"));}
+                    if(r.mask & kHasCollider) {r.collider.size = vec2From(e.at("c"));}
+                    if(r.mask & kHasShape)
+                    {
+                        const auto& sh = e.at("sh");
+                        const auto& c = sh.at("c");
+                        r.shapeSize = vec2From(sh.at("s"));
+                        r.shapeColor = {c.at(0).get<std::uint8_t>(), c.at(1).get<std::uint8_t>(),
+                                        c.at(2).get<std::uint8_t>(), c.at(3).get<std::uint8_t>()};
+                        r.shapeTiled = sh.at("t").get<bool>() ? 1 : 0;
+                    }
+                    if(r.mask & kHasExtra)
+                    {
+                        for(const auto& b : e.at("x"))
+                        {
+                            const int value = b.get<int>();
+                            if(value < 0 || value > 255) {return false;}
+                            r.extra.push_back(static_cast<std::byte>(value));
+                        }
+                    }
+                    records.push_back(std::move(r));
+                }
+            }
+            catch(const nlohmann::json::exception&) {return false;}
+            return true;
         }
     }
 
@@ -97,67 +224,48 @@ namespace engine::networking {
 
     Bytes sceneReplicator::encode(const Scene& scene, bool ownedOnly) const
     {
-        Bytes body;
-        byteWriter w(body);
-        std::uint32_t count = 0;
-
+        std::vector<entityRecord> records;
         for(const auto& [id, entity] : entities_)
         {
             if(ownedOnly && ownerOf(id) != self_) {continue;}
             if(!scene.hasEntity(entity)) {continue;}
 
-            const RigidBody* rb = scene.getRigidBody(entity);
-            const Collider* collider = scene.getCollider(entity);
-            const Shape* shape = scene.getShape(entity);
-            auto extra = extras_.find(id);
-
-            std::uint8_t mask = 0;
-            if(rb) {mask |= kHasRigidBody;}
-            if(collider) {mask |= kHasCollider;}
-            if(shape) {mask |= kHasShape;}
-            if(extra != extras_.end()) {mask |= kHasExtra;}
-
-            w.put(id);
-            w.put(mask);
-            w.put(scene.transform(entity));
-            if(rb) {w.put(*rb);}
-            if(collider) {w.put(*collider);}
-            if(shape)
+            entityRecord r;
+            r.id = id;
+            r.transform = scene.transform(entity);
+            if(const RigidBody* rb = scene.getRigidBody(entity))
             {
-                w.put(shape->size);
-                w.put(shape->color);
-                w.put(static_cast<std::uint8_t>(shape->tiled));
+                r.mask |= kHasRigidBody;
+                r.rigidBody = *rb;
             }
-            if(extra != extras_.end()) {w.putBytes(extra->second);}
-            ++count;
+            if(const Collider* collider = scene.getCollider(entity))
+            {
+                r.mask |= kHasCollider;
+                r.collider = *collider;
+            }
+            if(const Shape* shape = scene.getShape(entity))
+            {
+                r.mask |= kHasShape;
+                r.shapeSize = shape->size;
+                r.shapeColor = shape->color;
+                r.shapeTiled = shape->tiled ? 1 : 0;
+            }
+            if(auto extra = extras_.find(id); extra != extras_.end())
+            {
+                r.mask |= kHasExtra;
+                r.extra = extra->second;
+            }
+            records.push_back(std::move(r));
         }
-
-        Bytes out;
-        byteWriter header(out);
-        header.put(kFormatVersion);
-        header.put(count);
-        out.insert(out.end(), body.begin(), body.end());
-        return out;
+        return format_ == SnapshotFormat::Json ? writeJson(records) : writeBinary(records);
     }
 
     bool sceneReplicator::apply(Scene& scene, ByteView snapshot, ClientId from)
     {
         // parse everything first so a malformed snapshot changes nothing
-        byteReader in(snapshot);
-        std::uint8_t version = 0;
-        std::uint32_t count = 0;
-        in.get(version);
-        in.get(count);
-        if(!in.ok() || version != kFormatVersion) {return false;}
-
         std::vector<entityRecord> records;
-        for(std::uint32_t i = 0; i < count; ++i)
-        {
-            entityRecord r;
-            if(!readRecord(in, r)) {return false;}
-            records.push_back(std::move(r));
-        }
-        if(!in.atEnd()) {return false;}
+        const bool isJson = !snapshot.empty() && snapshot.front() == std::byte{'{'};
+        if(!(isJson ? readJson(snapshot, records) : readBinary(snapshot, records))) {return false;}
 
         std::unordered_set<NetId> seen;
         for(auto& r : records)
