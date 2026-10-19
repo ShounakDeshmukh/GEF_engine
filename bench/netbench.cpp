@@ -117,7 +117,7 @@ RunResult runOnce(const Condition& condition, net::SnapshotFormat format, int it
     std::atomic<int> running = condition.clients;
     std::atomic<bool> failed = false;
     std::vector<Clock::time_point> finished(condition.clients);
-    std::vector<std::jthread> clients;
+    std::vector<std::thread> clients;
     clients.reserve(condition.clients);
     for (int i = 0; i < condition.clients; ++i) {
         clients.emplace_back([&, i] {
@@ -138,7 +138,9 @@ RunResult runOnce(const Condition& condition, net::SnapshotFormat format, int it
         }
         server.publishScene(scene, tick);
     }
-    clients.clear();
+    for (std::thread& client : clients) {
+        client.join();
+    }
     const std::size_t snapshotBytes = server.replicator().encodeAll(scene).size();
     server.stop();
 
