@@ -6,31 +6,6 @@
 
 namespace engine {
 
-namespace {
-
-template <typename T>
-T& addComponent(std::unordered_map<EntityId, T>& store, EntityId id, T value, bool idExists,
-                const char* what) {
-    if (!idExists) {
-        throw std::out_of_range(what);
-    }
-    return store.insert_or_assign(id, value).first->second;
-}
-
-template <typename T>
-T* getComponent(std::unordered_map<EntityId, T>& store, EntityId id) noexcept {
-    auto it = store.find(id);
-    return it != store.end() ? &it->second : nullptr;
-}
-
-template <typename T>
-const T* getComponent(const std::unordered_map<EntityId, T>& store, EntityId id) noexcept {
-    auto it = store.find(id);
-    return it != store.end() ? &it->second : nullptr;
-}
-
-} // namespace
-
 EntityId Scene::createEntity() {
     const EntityId id = nextId_++;
     transforms_.try_emplace(id);
@@ -39,11 +14,9 @@ EntityId Scene::createEntity() {
 
 void Scene::destroyEntity(EntityId id) noexcept {
     transforms_.erase(id);
-    rigidBodies_.erase(id);
-    colliders_.erase(id);
-    shapes_.erase(id);
-    spriteAnimations_.erase(id);
-    texts_.erase(id);
+    for (auto& [type, store] : stores_) {
+        store.erase(store.map, id);
+    }
 }
 
 bool Scene::hasEntity(EntityId id) const noexcept {
@@ -67,85 +40,83 @@ const Transform& Scene::transform(EntityId id) const {
 }
 
 RigidBody& Scene::addRigidBody(EntityId id, RigidBody rb) {
-    return addComponent(rigidBodies_, id, rb, hasEntity(id),
-                        "Scene::addRigidBody: unknown EntityId");
+    return add<RigidBody>(id, std::move(rb));
 }
 
 void Scene::removeRigidBody(EntityId id) noexcept {
-    rigidBodies_.erase(id);
+    remove<RigidBody>(id);
 }
 
 RigidBody* Scene::getRigidBody(EntityId id) noexcept {
-    return getComponent(rigidBodies_, id);
+    return get<RigidBody>(id);
 }
 
 const RigidBody* Scene::getRigidBody(EntityId id) const noexcept {
-    return getComponent(rigidBodies_, id);
+    return get<RigidBody>(id);
 }
 
 Collider& Scene::addCollider(EntityId id, Collider c) {
-    return addComponent(colliders_, id, c, hasEntity(id), "Scene::addCollider: unknown EntityId");
+    return add<Collider>(id, std::move(c));
 }
 
 void Scene::removeCollider(EntityId id) noexcept {
-    colliders_.erase(id);
+    remove<Collider>(id);
 }
 
 Collider* Scene::getCollider(EntityId id) noexcept {
-    return getComponent(colliders_, id);
+    return get<Collider>(id);
 }
 
 const Collider* Scene::getCollider(EntityId id) const noexcept {
-    return getComponent(colliders_, id);
+    return get<Collider>(id);
 }
 
 Shape& Scene::addShape(EntityId id, Shape s) {
-    return addComponent(shapes_, id, s, hasEntity(id), "Scene::addShape: unknown EntityId");
+    return add<Shape>(id, std::move(s));
 }
 
 void Scene::removeShape(EntityId id) noexcept {
-    shapes_.erase(id);
+    remove<Shape>(id);
 }
 
 Shape* Scene::getShape(EntityId id) noexcept {
-    return getComponent(shapes_, id);
+    return get<Shape>(id);
 }
 
 const Shape* Scene::getShape(EntityId id) const noexcept {
-    return getComponent(shapes_, id);
+    return get<Shape>(id);
 }
 
 SpriteAnimation& Scene::addSpriteAnimation(EntityId id, SpriteAnimation anim) {
-    return addComponent(spriteAnimations_, id, anim, hasEntity(id),
-                        "Scene::addSpriteAnimation: unknown EntityId");
+    return add<SpriteAnimation>(id, std::move(anim));
 }
 
 void Scene::removeSpriteAnimation(EntityId id) noexcept {
-    spriteAnimations_.erase(id);
+    remove<SpriteAnimation>(id);
 }
 
 SpriteAnimation* Scene::getSpriteAnimation(EntityId id) noexcept {
-    return getComponent(spriteAnimations_, id);
+    return get<SpriteAnimation>(id);
 }
 
 const SpriteAnimation* Scene::getSpriteAnimation(EntityId id) const noexcept {
-    return getComponent(spriteAnimations_, id);
+    return get<SpriteAnimation>(id);
 }
 
 Text& Scene::addText(EntityId id, Text text) {
-    return addComponent(texts_, id, std::move(text), hasEntity(id), "Scene::addText: unknown EntityId");
+    return add<Text>(id, std::move(text));
 }
 
 void Scene::removeText(EntityId id) noexcept {
-    texts_.erase(id);
+    remove<Text>(id);
 }
 
 Text* Scene::getText(EntityId id) noexcept {
-    return getComponent(texts_, id);
+    return get<Text>(id);
 }
 
 const Text* Scene::getText(EntityId id) const noexcept {
-    return getComponent(texts_, id);
+    return get<Text>(id);
 }
 
 const std::unordered_map<EntityId, Transform>& Scene::transforms() const noexcept {
@@ -153,23 +124,23 @@ const std::unordered_map<EntityId, Transform>& Scene::transforms() const noexcep
 }
 
 std::unordered_map<EntityId, RigidBody>& Scene::rigidBodies() noexcept {
-    return rigidBodies_;
+    return all<RigidBody>();
 }
 
 const std::unordered_map<EntityId, Collider>& Scene::colliders() const noexcept {
-    return colliders_;
+    return all<Collider>();
 }
 
 const std::unordered_map<EntityId, Shape>& Scene::shapes() const noexcept {
-    return shapes_;
+    return all<Shape>();
 }
 
 std::unordered_map<EntityId, SpriteAnimation>& Scene::spriteAnimations() noexcept {
-    return spriteAnimations_;
+    return all<SpriteAnimation>();
 }
 
 const std::unordered_map<EntityId, Text>& Scene::texts() const noexcept {
-    return texts_;
+    return all<Text>();
 }
 
 } // namespace engine
