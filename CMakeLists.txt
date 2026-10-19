@@ -25,6 +25,7 @@ endif()
 
 option(ENGINE_BUILD_TESTS "Build the engine test suite" ${PROJECT_IS_TOP_LEVEL})
 option(ENGINE_BUILD_EXAMPLES "Build the engine example programs" ${PROJECT_IS_TOP_LEVEL})
+option(ENGINE_BUILD_BENCH "Build the network benchmark" ${PROJECT_IS_TOP_LEVEL})
 
 include(cmake/Dependencies.cmake)
 
@@ -88,6 +89,10 @@ endif()
 if(ENGINE_BUILD_TESTS)
     include(CTest)
     add_subdirectory(tests)
+endif()
+
+if(ENGINE_BUILD_BENCH)
+    add_subdirectory(bench)
 endif()
 
 if(PROJECT_IS_TOP_LEVEL)
