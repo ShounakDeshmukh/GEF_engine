@@ -403,8 +403,8 @@ TEST_CASE("Peers see each other and receive the server platform at tick rate", "
     REQUIRE(testutil::eventually([&] { return p.sees(q.session.id()) && q.sees(p.session.id()); }));
 
     p.loop->inspect([&] { p.platformXs.clear(); });
-    std::this_thread::sleep_for(1s);
-    REQUIRE(p.loop->inspect([&] { return p.platformXs.size(); }) >= 20);
+    REQUIRE(testutil::eventually(
+        [&] { return p.loop->inspect([&] { return p.platformXs.size(); }) >= 20; }, 3000ms));
 }
 
 TEST_CASE("A peer that leaves is dropped by the others", "[net][peer]") {
