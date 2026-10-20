@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 
-project(engine VERSION 0.2.0 LANGUAGES CXX)
+project(engine VERSION 0.3.0 LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -25,6 +25,7 @@ endif()
 
 option(ENGINE_BUILD_TESTS "Build the engine test suite" ${PROJECT_IS_TOP_LEVEL})
 option(ENGINE_BUILD_EXAMPLES "Build the engine example programs" ${PROJECT_IS_TOP_LEVEL})
+option(ENGINE_BUILD_BENCH "Build the network benchmark" ${PROJECT_IS_TOP_LEVEL})
 
 include(cmake/Dependencies.cmake)
 
@@ -70,6 +71,7 @@ target_link_libraries(engine
         SDL3_ttf::SDL3_ttf
         spdlog::spdlog
         cppzmq-static
+        nlohmann_json::nlohmann_json
 )
 
 target_compile_options(engine PRIVATE
@@ -87,6 +89,10 @@ endif()
 if(ENGINE_BUILD_TESTS)
     include(CTest)
     add_subdirectory(tests)
+endif()
+
+if(ENGINE_BUILD_BENCH)
+    add_subdirectory(bench)
 endif()
 
 if(PROJECT_IS_TOP_LEVEL)

@@ -81,6 +81,10 @@ public:
      *  Transform. Uses the shape's texture if it has one, otherwise its
      *  color. */
     void drawEntities(const Scene& scene);
+    /** World position drawn at the window's top-left corner. Only drawEntities()
+     *  applies it, so other draw calls stay in screen space (backgrounds, HUDs). */
+    void setCamera(glm::vec2 position) noexcept { camera_ = position; }
+    glm::vec2 camera() const noexcept { return camera_; }
     /** Presents the frame to the window. */
     void present();
 
@@ -144,6 +148,7 @@ private:
     std::unordered_map<EntityId, TextCacheData> textCache_;
 
     ScalingMode scalingMode_ = ScalingMode::Constant;
+    glm::vec2 camera_{0.f, 0.f};
 };
 
 } // namespace engine

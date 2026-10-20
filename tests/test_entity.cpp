@@ -203,3 +203,78 @@ TEST_CASE("advanceAnimations clamps on the last frame when loop is false", "[sce
     REQUIRE(result->currentFrame == 1);
     REQUIRE(result->elapsed == 0.f);
 }
+
+namespace {
+struct Health {
+    int hp = 0;
+};
+struct Tag {};
+} // namespace
+
+TEST_CASE("Scene::add<T> attaches a game-defined component", "[scene][components]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+
+    REQUIRE(scene.add<Health>(id, {5}).hp == 5);
+    REQUIRE(scene.get<Health>(id)->hp == 5);
+    REQUIRE(scene.has<Health>(id));
+    REQUIRE_FALSE(scene.has<Tag>(id));
+    REQUIRE_THROWS_AS(scene.add<Health>(999), std::out_of_range);
+
+    scene.remove<Health>(id);
+    REQUIRE(scene.get<Health>(id) == nullptr);
+}
+
+TEST_CASE("Scene::destroyEntity removes game-defined components", "[scene][components]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.add<Health>(id);
+    scene.add<Tag>(id);
+
+    scene.destroyEntity(id);
+
+    REQUIRE(scene.all<Health>().empty());
+    REQUIRE(scene.all<Tag>().empty());
+}
+
+TEST_CASE("Scene::each visits entities that have every listed component", "[scene][components]") {
+    engine::Scene scene;
+    const engine::EntityId both = scene.createEntity();
+    const engine::EntityId healthOnly = scene.createEntity();
+    const engine::EntityId tagOnly = scene.createEntity();
+    scene.add<Health>(both, {1});
+    scene.add<Tag>(both);
+    scene.add<Health>(healthOnly, {2});
+    scene.add<Tag>(tagOnly);
+
+    std::vector<engine::EntityId> visited;
+    scene.each<Health, Tag>([&](engine::EntityId id, Health&, Tag&) { visited.push_back(id); });
+    REQUIRE(visited == std::vector{both});
+
+    scene.each<Health>([](engine::EntityId, Health& health) { health.hp += 10; });
+    REQUIRE(scene.get<Health>(both)->hp == 11);
+    REQUIRE(scene.get<Health>(healthOnly)->hp == 12);
+}
+
+TEST_CASE("Scene copies are deep", "[scene][components]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.add<Health>(id, {5});
+
+    engine::Scene copy = scene;
+    copy.get<Health>(id)->hp = 9;
+    copy.add<Tag>(id);
+
+    REQUIRE(scene.get<Health>(id)->hp == 5);
+    REQUIRE_FALSE(scene.has<Tag>(id));
+}
+
+TEST_CASE("Named accessors share the generic storage", "[scene][components]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.addShape(id, engine::Shape{});
+    scene.add<engine::Collider>(id, {});
+
+    REQUIRE(scene.get<engine::Shape>(id) == scene.getShape(id));
+    REQUIRE(scene.colliders().size() == 1);
+}

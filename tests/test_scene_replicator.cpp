@@ -3,12 +3,15 @@
 #include <engine/entity.hpp>
 #include <engine/ids.hpp>
 #include <engine/networking/sceneReplicator.hpp>
+#include <string>
+#include <string_view>
 
 using engine::EntityId;
 using engine::kServerId;
 using engine::makeNetId;
 using engine::networking::Bytes;
 using engine::networking::sceneReplicator;
+using engine::networking::SnapshotFormat;
 
 namespace {
 
@@ -22,7 +25,13 @@ EntityId createAt(engine::Scene& scene, float x) {
 
 TEST_CASE("sceneReplicator round-trips every replicated component", "[net][replicator]") {
     sceneReplicator server(kServerId);
-    sceneReplicator client(1);
+    sceneReplicator client(1); // stays Binary: receivers read either format
+    SECTION("binary") {
+        server.setFormat(SnapshotFormat::Binary);
+    }
+    SECTION("json") {
+        server.setFormat(SnapshotFormat::Json);
+    }
     engine::Scene a;
     engine::Scene b;
     const EntityId source = a.createEntity();
@@ -35,7 +44,8 @@ TEST_CASE("sceneReplicator round-trips every replicated component", "[net][repli
     shape.tiled = true;
     a.addShape(source, shape);
     const auto id = server.track(source);
-    server.setExtra(id, Bytes{std::byte{7}});
+    const Bytes sentExtra{std::byte{7}, std::byte{255}};
+    server.setExtra(id, sentExtra);
 
     REQUIRE(client.apply(b, server.encodeOwned(a), kServerId));
 
@@ -54,7 +64,7 @@ TEST_CASE("sceneReplicator round-trips every replicated component", "[net][repli
     REQUIRE(copied->tiled);
     const Bytes* extra = client.extraOf(id);
     REQUIRE(extra != nullptr);
-    REQUIRE((*extra == Bytes{std::byte{7}})); // parenthesized: Catch2 cannot print std::byte
+    REQUIRE((*extra == sentExtra)); // parenthesized: Catch2 cannot print std::byte
 }
 
 TEST_CASE("sceneReplicator keeps a bound entity's local texture", "[net][replicator]") {
@@ -161,4 +171,37 @@ TEST_CASE("sceneReplicator::bind reserves the bound local id", "[net][replicator
     server.bind(makeNetId(kServerId, 100), a.createEntity());
 
     REQUIRE(server.track(a.createEntity()) == makeNetId(kServerId, 101));
+}
+
+TEST_CASE("sceneReplicator rejects malformed JSON without changing the scene",
+          "[net][replicator]") {
+    sceneReplicator server(kServerId);
+    sceneReplicator client(1);
+    server.setFormat(SnapshotFormat::Json);
+    engine::Scene a;
+    engine::Scene b;
+    const auto id = server.track(createAt(a, 12.f));
+    const Bytes valid = server.encodeOwned(a);
+    REQUIRE(client.apply(b, valid, kServerId));
+    const EntityId copy = *client.entityOf(id);
+
+    const auto toBytes = [](std::string_view text) {
+        const auto* begin = reinterpret_cast<const std::byte*>(text.data());
+        return Bytes(begin, begin + text.size());
+    };
+    const std::string net = std::to_string(id);
+    const Bytes truncated(valid.begin(), valid.end() - 5);
+    const Bytes wrongVersion = toBytes(R"({"v":2,"e":[]})");
+    const Bytes missingKeys = toBytes(R"({"v":1,"e":[{"id":)" + net + "}]}");
+    const Bytes maskWithoutKey =
+        toBytes(R"({"v":1,"e":[{"id":)" + net + R"(,"m":1,"t":{"p":[0,0],"s":[1,1]}}]})");
+    const Bytes extraOutOfRange =
+        toBytes(R"({"v":1,"e":[{"id":)" + net + R"(,"m":8,"t":{"p":[0,0],"s":[1,1]},"x":[300]}]})");
+
+    for (const Bytes& malformed :
+         {truncated, wrongVersion, missingKeys, maskWithoutKey, extraOutOfRange}) {
+        REQUIRE_FALSE(client.apply(b, malformed, kServerId));
+        REQUIRE(b.hasEntity(copy));
+        REQUIRE(b.transform(copy).position.x == 12.f);
+    }
 }

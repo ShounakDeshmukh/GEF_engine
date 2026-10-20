@@ -120,16 +120,16 @@ void Renderer::drawEntities(const Scene& scene) {
     //Render shapes/sprites/spriteSheets
     for (const auto& [id, shape] : scene.shapes()) {
         const Transform& transform = scene.transform(id);
+        const glm::vec2 position = transform.position - camera_;
         const glm::vec2 size = shape.size * transform.scale;
         if (const SpriteAnimation* anim = scene.getSpriteAnimation(id)) {
             const SpriteSheetData& sheet = spriteSheets_.at(anim->sheet);
             const std::uint32_t frameIndex = anim->frames.at(anim->currentFrame).index;
-            drawTexture(sheet.texture, transform.position, size, false,
-                        sheet.frames.at(frameIndex));
+            drawTexture(sheet.texture, position, size, false, sheet.frames.at(frameIndex));
         } else if (shape.texture) {
-            drawTexture(*shape.texture, transform.position, size, shape.tiled);
+            drawTexture(*shape.texture, position, size, shape.tiled);
         } else {
-            fillRect(transform.position, size, shape.color);
+            fillRect(position, size, shape.color);
         }
     }
 
@@ -137,7 +137,7 @@ void Renderer::drawEntities(const Scene& scene) {
     for (const auto& [id, text] : scene.texts()) {
         const Transform& transform = scene.transform(id);
 
-        drawText(id, text, transform.position);
+        drawText(id, text, transform.position - camera_);
     }
 
 }

@@ -12,6 +12,9 @@ namespace engine { class Scene; }
 
 namespace engine::networking {
 
+    /** Snapshot representation. Binary starts with the version byte, Json with '{'. */
+    enum class SnapshotFormat : std::uint8_t { Binary, Json };
+
     /** Converts replicated entities in a Scene to and from snapshot Bytes, keyed by NetId.
      *
      *  Each snapshot carries, per entity: Transform, and RigidBody, Collider and Shape
@@ -24,6 +27,9 @@ namespace engine::networking {
      *  never overwrites entities this process owns.
      *
      *  Snapshots use the host's byte order; all processes must share an architecture.
+     *
+     *  setFormat() picks Binary (packed fields) or Json for encoding, to compare data
+     *  formats; apply() reads both.
      *
      *  @thread_safety Not threadsafe. Use from the thread that owns the Scene. */
     class sceneReplicator {
@@ -39,6 +45,10 @@ namespace engine::networking {
         NetId track(EntityId entity);
         /** Stops replicating; receivers destroy their copy on the next snapshot. */
         void untrack(EntityId entity);
+
+        /** Defaults to Binary. Takes effect on the next encode. */
+        void setFormat(SnapshotFormat format) {format_ = format;}
+        SnapshotFormat format() const {return format_;}
 
         /** Game-defined bytes sent with the entity on every snapshot until changed. */
         void setExtra(NetId id, Bytes extra);
@@ -71,6 +81,7 @@ namespace engine::networking {
 
         private:
         ClientId self_;
+        SnapshotFormat format_ = SnapshotFormat::Binary;
         std::uint32_t nextLocal_ = 0;
         std::unordered_map<NetId, EntityId> entities_;
         std::unordered_map<EntityId, NetId> netIds_;

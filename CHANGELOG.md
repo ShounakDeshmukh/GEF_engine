@@ -4,6 +4,26 @@ All notable changes to Deadlock are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/). Only `include/engine/` is covered by
 the version contract.
 
+## [0.3.0] - 2026-10-19
+
+Generic components, a camera, and a second snapshot format with a benchmark. Consuming repos
+should pin `GIT_TAG v0.3.0`.
+
+### Added
+
+- `Scene::add<T>`, `get<T>`, `has<T>`, `remove<T>`, `all<T>`, `each<T...>` - any
+  copy-constructible type is a component.
+- `Renderer::setCamera` / `camera` - world offset applied by `drawEntities`.
+- `networking::SnapshotFormat` and `sceneReplicator::setFormat` - Binary or JSON snapshots;
+  `apply()` reads both.
+- `bench/netbench` and `bench/plot.py` - snapshot format benchmark (see `bench/README.md`),
+  with results in `bench-results/`.
+
+### Changed
+
+- RigidBody, Collider, Shape, SpriteAnimation and Text use the generic component storage. The
+  named accessors are unchanged; the out-of-range message is now `Scene::add: unknown EntityId`.
+
 ## [0.2.0] - 2026-09-30
 
 Adds a simulation thread and client-server and peer-to-peer networking. Consuming repos should
