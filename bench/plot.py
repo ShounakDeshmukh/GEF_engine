@@ -63,6 +63,7 @@ def line_plot(
     for fmt in FORMATS:
         xs, ys, errs = series(summary, experiment, fmt, experiment, y)
         ax.errorbar(xs, ys, yerr=errs if y == "mean_s" else None, marker="o", capsize=4, label=fmt)
+        ax.set_xticks(xs)
     ax.set_xlabel(labels[0])
     ax.set_ylabel(labels[1])
     ax.set_title(f"{experiment}: {summary[0]['iterations']} iterations per client")
