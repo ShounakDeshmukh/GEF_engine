@@ -27,8 +27,8 @@ namespace engine::events {
      *  events; ones due by the tick being run are dispatched in the same run().
      *
      *  Networking: sending is up to the game (encode() an event and send it through its
-     *  session). receive() turns messages back into queued events for every networked
-     *  type this process subscribes to.
+     *  session). receive() turns messages back into queued events only for types
+     *  subscribed with fromNetwork = true; everything else from the network is dropped.
      *
      *  @thread_safety Not threadsafe. Use from the thread that owns the Scene (the sim
      *  thread), as with sceneReplicator. */
@@ -38,10 +38,14 @@ namespace engine::events {
         explicit eventManager(std::size_t maxEventsPerRun = 4096);
 
         /** Sets the handler for T. One handler per type: a second subscribe for the
-         *  same type is an error and is ignored. For a networked T this also lets
-         *  receive() decode it. */
+         *  same type is an error and is ignored.
+         *
+         *  fromNetwork lets receive() decode T from any peer, so only set it for types
+         *  this process should take from the network (e.g. requests on a server, results
+         *  on a client). Off by default: a server raising deathEvent locally must not
+         *  also accept one from a client. Requires a networkedEvent T. */
         template <eventType T>
-        void subscribe(std::function<void(const T&, Scene&)> handler)
+        void subscribe(std::function<void(const T&, Scene&)> handler, bool fromNetwork = false)
         {
             const std::type_index type(typeid(T));
             if(handlers_.contains(type))
@@ -54,7 +58,16 @@ namespace engine::events {
                 h(static_cast<const T&>(e), scene);
             });
 
-            if constexpr (networkedEvent<T>)
+            if(!fromNetwork)
+            {
+                return;
+            }
+            if constexpr (!networkedEvent<T>)
+            {
+                log::error("eventManager: {} is not a networked event; fromNetwork ignored", type.name());
+                assert(false && "fromNetwork needs kType, encode() and decode()");
+            }
+            else
             {
                 const std::uint16_t kind = T::kType;
                 if(decoders_.contains(kind))

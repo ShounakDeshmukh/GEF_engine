@@ -13,6 +13,7 @@
  */
 
 #include <array>
+#include <bitset>
 #include <cstdint>
 #include <glm/vec2.hpp>
 #include <optional>
@@ -42,14 +43,15 @@ namespace engine::events {
     struct inputEvent : simpleEvent {
         SC::SDL_Scancode key = SC::SDL_SCANCODE_UNKNOWN;
         bool pressed = false;
-        /** Set by inputMapper when this press completed a chord, or this release ended one,
-         *  so a handler for the plain key can skip it. */
+        /** Set by inputMapper on a press that completed a chord, and on the release that
+         *  ends that same press. A handler for the plain key can skip chorded events and
+         *  still see every press it handled released. */
         bool chorded = false;
     };
 
     /** A chord registered with inputMapper::addChord() completed (pressed) or ended because
      *  one of its keys was released. Raised at priority -1, before the tick's inputEvents. */
-    struct chordEvent : simpleEvent {
+    struct inputChordEvent : simpleEvent {
         int chord = 0;
         bool pressed = false;
     };
@@ -102,7 +104,8 @@ namespace engine::events {
     struct replayPause : simpleEvent {};
     /** Continues paused playback. */
     struct replayResume : simpleEvent {};
-    /** Sets playback speed relative to the recording: 0.5 half, 2.0 double. Kept across
+    /** Sets playback speed relative to the recording: 0.5 half, 2.0 double, at most
+     *  replayController::kMaxPlaybackSpeed (faster is clamped). Kept across
      *  playbacks. */
     struct replaySpeed : simpleEvent {
         float multiplier = 1.f;
@@ -115,7 +118,7 @@ namespace engine::events {
     void raiseInputEvents(eventManager& events, const KeyboardState& now,
                           const KeyboardState& previous, std::int64_t tick);
 
-    /** Raises chordEvents for registered key combinations, and inputEvents like
+    /** Raises inputChordEvents for registered key combinations, and inputEvents like
      *  raiseInputEvents(). Use it in place of raiseInputEvents() when a game has chords.
      *
      *  A chord completes on the tick the last of its keys goes down, provided the presses
@@ -130,13 +133,13 @@ namespace engine::events {
      *  @thread_safety Not threadsafe. Use it on the sim thread with its eventManager. */
     class inputMapper {
         public:
-        /** Registers keys as a chord and returns its id for chordEvent::chord, or -1 if keys
+        /** Registers keys as a chord and returns its id for inputChordEvent::chord, or -1 if keys
          *  is empty. windowTicks bounds the ticks between the first and last press:
          *  -1 any (modifier style: hold Shift, then press W), 0 the same tick, n within n
          *  ticks (6 is 100 ms at 60 ticks per second). */
         int addChord(std::vector<SC::SDL_Scancode> keys, std::int64_t windowTicks = -1);
 
-        /** Raises the tick's chordEvents, then an inputEvent for every key that differs
+        /** Raises the tick's inputChordEvents, then an inputEvent for every key that differs
          *  between now and previous (in onTick: ctx.keyboard and ctx.previousKeyboard). */
         void raise(eventManager& events, const KeyboardState& now, const KeyboardState& previous,
                    std::int64_t tick);
@@ -151,6 +154,7 @@ namespace engine::events {
         std::vector<chord> chords_;                 // indexed by id
         std::vector<int> longestFirst_;             // ids, longest chord first
         std::array<std::int64_t, SC::SDL_SCANCODE_COUNT> pressedAt_{};  // tick each key last went down
+        std::bitset<SC::SDL_SCANCODE_COUNT> pressChorded_;              // held keys whose press was chorded
     };
 
     /** Raises a collisionEvent for tick, with EntityIds, for every pair of entities with

@@ -55,7 +55,7 @@ namespace engine::events {
             auto it = decoders_.find(message.type);
             if(it == decoders_.end())
             {
-                log::error("eventManager: no event subscribed for network type {}; dropped", message.type);
+                log::error("eventManager: network type {} is not accepted (unknown, or subscribed without fromNetwork); dropped", message.type);
                 continue;
             }
 

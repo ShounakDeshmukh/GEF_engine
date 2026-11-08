@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
             world.getShape(marker)->color = aliveMarker;
         }
         engine::log::info("player {} spawned{}", e.owner, e.owner == self ? " (you)" : "");
-    });
+    }, /*fromNetwork=*/true);
 
     events.subscribe<ev::deathEvent>([&](const ev::deathEvent& e, engine::Scene& world) {
         if (mine && e.entity == *mine) {
@@ -95,11 +95,11 @@ int main(int argc, char* argv[]) {
         } else {
             engine::log::info("player {} died", owners.contains(e.entity) ? owners[e.entity] : 0);
         }
-    });
+    }, /*fromNetwork=*/true);
 
     events.subscribe<demo::playerLeft>([&](const demo::playerLeft& e, engine::Scene&) {
         engine::log::info("player {} left", e.owner);
-    });
+    }, /*fromNetwork=*/true);
 
     auto onTick = [&](const engine::TickContext& ctx) {
         // Snapshot first, so events about an entity find it already in the Scene.

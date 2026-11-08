@@ -15,7 +15,7 @@
 //
 // Events, all from engine/events/commonEvents.hpp:
 //   inputEvent          raised by inputMapper, one per key change
-//   chordEvent          raised by inputMapper when Shift + a move key goes down or up
+//   inputChordEvent          raised by inputMapper when Shift + a move key goes down or up
 //   replayRecordStart   R while not recording
 //   replayRecordStop    R while recording
 //   replayPlayStart     P while not playing (stops a recording in progress first)
@@ -88,7 +88,7 @@ int main() {
     // Sprinting is a modifier on top of walking, so the input handler below still tracks move
     // keys even when inputEvent::chorded is set; a chord that replaced a key's own action
     // would skip those.
-    events.subscribe<ev::chordEvent>([&](const ev::chordEvent& e, engine::Scene&) {
+    events.subscribe<ev::inputChordEvent>([&](const ev::inputChordEvent& e, engine::Scene&) {
         sprintChords += e.pressed ? 1 : -1;
     });
 

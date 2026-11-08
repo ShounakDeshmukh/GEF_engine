@@ -118,7 +118,7 @@ namespace engine::events {
 
         // the whole tick's keyboard is known here, so the order keys are raised in can't
         // make a chord look incomplete
-        std::bitset<SC::SDL_SCANCODE_COUNT> chorded;    // presses/releases flagged on inputEvents
+        std::bitset<SC::SDL_SCANCODE_COUNT> chorded;    // presses flagged on inputEvents
         std::bitset<SC::SDL_SCANCODE_COUNT> claimed;    // presses that completed a chord this tick
         for(int id : longestFirst_)
         {
@@ -130,11 +130,7 @@ namespace engine::events {
             {
                 if(allDown) {continue;}
                 c.active = false;
-                for(auto key : c.keys)
-                {
-                    if(!now.isKeyPressed(key) && previous.isKeyPressed(key)) {chorded.set(key);}
-                }
-                events.raise(chordEvent{{}, id, false}, tick, -1);
+                events.raise(inputChordEvent{{}, id, false}, tick, -1);
                 continue;
             }
             if(!allDown) {continue;}
@@ -162,12 +158,18 @@ namespace engine::events {
                     chorded.set(key);
                 }
             }
-            events.raise(chordEvent{{}, id, true}, tick, -1);
+            events.raise(inputChordEvent{{}, id, true}, tick, -1);
         }
 
+        // A release is flagged like the press it ends, so a handler that skips chorded
+        // events always sees whole press/release pairs, even when a chord starts or ends
+        // while the key is held.
         for(auto key : changed)
         {
-            events.raise(inputEvent{{}, key, now.isKeyPressed(key), chorded.test(key)}, tick);
+            const bool pressed = now.isKeyPressed(key);
+            if(pressed) {pressChorded_.set(key, chorded.test(key));}
+            events.raise(inputEvent{{}, key, pressed, pressChorded_.test(key)}, tick);
+            if(!pressed) {pressChorded_.reset(key);}
         }
     }
 

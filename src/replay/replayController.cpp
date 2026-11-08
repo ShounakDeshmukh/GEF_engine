@@ -9,8 +9,8 @@ namespace engine::replay {
     using namespace engine::events;
 
     namespace {
-        // recorded ticks one game tick may play; covers speeds up to 8x
-        constexpr int kMaxStepsPerTick = 8;
+        // recorded ticks one game tick may play: enough for kMaxPlaybackSpeed
+        constexpr int kMaxStepsPerTick = static_cast<int>(replayController::kMaxPlaybackSpeed);
     }
 
     replayController::replayController(eventManager& events, SimulationThread& sim,
@@ -45,6 +45,9 @@ namespace engine::replay {
             }
             replayScene_ = Scene{};     // the recorder plays into a fresh Scene each time
             recorder_.step(replayScene_);   // show the first frame at once
+            // Start the replay clock at this tick, so update() on this same tick doesn't
+            // count it as elapsed playback and skip the first frame.
+            if(e.tick > gameTicks_) {gameTicks_ = e.tick;}
             playTime_.unpause();
             stepper_.emplace(playTime_, kMaxStepsPerTick);
             sim_.showScene(&replayScene_);
@@ -71,7 +74,15 @@ namespace engine::replay {
         });
 
         events_.subscribe<replaySpeed>([this](const replaySpeed& e, Scene&) {
-            playTime_.setSpeedMultiplier(e.multiplier);
+            float multiplier = e.multiplier;
+            if(multiplier > kMaxPlaybackSpeed)
+            {
+                log::warn("replayController: speed {}x is above the {}x maximum; using {}x",
+                          multiplier, kMaxPlaybackSpeed, kMaxPlaybackSpeed);
+                multiplier = kMaxPlaybackSpeed;
+            }
+            // Timeline rejects zero, negative and NaN speeds itself, keeping the old one
+            playTime_.setSpeedMultiplier(multiplier);
             log::info("replay: speed {}x", playTime_.speedMultiplier());
         });
     }

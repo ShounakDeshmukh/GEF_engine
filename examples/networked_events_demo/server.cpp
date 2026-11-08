@@ -42,8 +42,11 @@ public:
             [this](const clientJoined& e, engine::Scene& scene) { onJoined(e, scene); });
         events_.subscribe<clientLeft>(
             [this](const clientLeft& e, engine::Scene& scene) { onLeft(e, scene); });
+        // Clients may only send requests. Collisions, deaths and spawns are raised here and
+        // broadcast, but never accepted from the network.
         events_.subscribe<demo::moveRequest>(
-            [this](const demo::moveRequest& e, engine::Scene& scene) { onMove(e, scene); });
+            [this](const demo::moveRequest& e, engine::Scene& scene) { onMove(e, scene); },
+            /*fromNetwork=*/true);
         events_.subscribe<ev::collisionEvent>(
             [this](const ev::collisionEvent& e, engine::Scene& scene) { onCollision(e, scene); });
         events_.subscribe<ev::deathEvent>(
@@ -203,9 +206,6 @@ private:
     }
 
     void onSpawn(const ev::spawnEvent& e, engine::Scene& scene) {
-        if (e.remote) {
-            return; // only the server decides spawns
-        }
         player* p = findPlayer(e.entity);
         if (!p) {
             return; // left before the respawn came due

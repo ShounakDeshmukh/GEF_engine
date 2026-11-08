@@ -38,6 +38,9 @@ namespace engine::replay {
      *  use it only from the sim thread. It must outlive sim.stop(). */
     class replayController {
         public:
+        /** The fastest playback: replaySpeed above it plays at this speed instead. */
+        static constexpr float kMaxPlaybackSpeed = 8.f;
+
         /** ticksPerSecond is the game's tick rate (gameTime's), so speed 1 plays back in
          *  real time. */
         replayController(events::eventManager& events, SimulationThread& sim,
@@ -53,6 +56,7 @@ namespace engine::replay {
         bool recording() const {return recording_;}
         bool playing() const {return recorder_.playing();}
         bool playbackPaused() const {return playTime_.paused();}
+        /** The speed playback runs at, after clamping to kMaxPlaybackSpeed. */
         float playbackSpeed() const {return playTime_.speedMultiplier();}
         const replayRecorder& recorder() const {return recorder_;}
 

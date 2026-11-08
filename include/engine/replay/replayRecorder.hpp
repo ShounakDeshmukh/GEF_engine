@@ -49,7 +49,7 @@ namespace engine::replay {
         std::int64_t lastTick() const;
 
         /** Starts playback at the first recorded tick at or after fromTick (the oldest
-         *  one if fromTick is older). Pass a fresh, empty Scene to step() from here on.
+         *  one if fromTick is older, the newest if it is newer). Pass a fresh, empty Scene to step() from here on.
          *  Returns false if nothing is recorded. */
         bool startPlayback(std::int64_t fromTick);
         /** Writes the next recorded tick into scene. Returns false, writing nothing,
