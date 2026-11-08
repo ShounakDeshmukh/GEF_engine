@@ -16,3 +16,7 @@
 #include "engine/timeline.hpp"
 #include "engine/window.hpp"
 #include "engine/networking/networking.hpp"
+#include "engine/events/eventManager.hpp"
+#include "engine/events/commonEvents.hpp"
+#include "engine/replay/replayRecorder.hpp"
+#include "engine/replay/replayController.hpp"

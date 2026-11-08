@@ -31,8 +31,9 @@ namespace engine::networking {
         clientInfo client;
     };
 
-    /** Reliable, ordered, one-off message. type is game-defined; the engine never
-     *  interprets it and reserves no values. */
+    /** Reliable, ordered, one-off message. type is game-defined; the transport never
+     *  interprets it. Types from events::kEngineEventTypeFirst (0xFF00) up are used by the
+     *  engine's common events (engine/events/commonEvents.hpp). */
     struct receivedMessage {
         ClientId from = kServerId;
         std::uint16_t type = 0;

@@ -112,6 +112,11 @@ public:
     void togglePause();
     void setSpeed(float multiplier);
 
+    /** Call from onTick only. Publishes scene in RenderFrames instead of the simulated
+     *  Scene (e.g. a replay); nullptr goes back to the simulated one. scene must stay
+     *  alive until replaced. */
+    void showScene(const Scene* scene);
+
     std::optional<RenderFrame> takeRenderFrame();
     /** The first exception that stopped the threads, or null. */
     std::exception_ptr failure() const;
@@ -132,6 +137,7 @@ private:
     void joinAll();
 
     Scene scene_;
+    const Scene* display_ = nullptr; // sim thread only; set by showScene()
     Timeline& gameTime_;
     TickFn onTick_;
     SimulationThreadConfig config_;
