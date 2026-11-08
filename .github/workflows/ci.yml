@@ -31,7 +31,7 @@ jobs:
             os: ubuntu-24.04
             preset: linux-release
           - name: macOS
-            os: macos-14
+            os: macos-15
             preset: macos-release
     steps:
       - uses: actions/checkout@v4
