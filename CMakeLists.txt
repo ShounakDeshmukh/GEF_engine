@@ -48,6 +48,11 @@ add_library(engine STATIC
     src/networking/sessionServer.cpp
     src/networking/sessionClient.cpp
     src/networking/peerSession.cpp
+    src/networking/snapshotDelta.cpp
+    src/events/eventManager.cpp
+    src/events/commonEvents.cpp
+    src/replay/replayRecorder.cpp
+    src/replay/replayController.cpp
 )
 add_library(engine::engine ALIAS engine)
 

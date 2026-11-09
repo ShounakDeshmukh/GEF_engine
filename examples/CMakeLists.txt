@@ -29,3 +29,8 @@ add_executable(snapshot_format_demo snapshot_format_demo/main.cpp)
 target_link_libraries(snapshot_format_demo PRIVATE engine)
 
 add_subdirectory(networking_demo)
+
+add_executable(event_replay_demo event_replay_demo/main.cpp)
+target_link_libraries(event_replay_demo PRIVATE engine)
+
+add_subdirectory(networked_events_demo)

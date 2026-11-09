@@ -1,0 +1,5 @@
+add_executable(networked_events_server server.cpp)
+target_link_libraries(networked_events_server PRIVATE engine)
+
+add_executable(networked_events_client client.cpp)
+target_link_libraries(networked_events_client PRIVATE engine)

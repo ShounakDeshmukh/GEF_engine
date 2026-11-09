@@ -79,6 +79,7 @@ namespace engine::networking {
 
         bool ok() const {return ok_;}
         bool atEnd() const {return pos_ == in_.size();}
+        std::size_t position() const {return pos_;}
 
         private:
         ByteView in_;

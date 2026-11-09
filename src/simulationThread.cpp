@@ -97,6 +97,10 @@ void SimulationThread::setSpeed(float multiplier) {
     post([multiplier](Scene&, Timeline& time) { time.setSpeedMultiplier(multiplier); });
 }
 
+void SimulationThread::showScene(const Scene* scene) {
+    display_ = scene;
+}
+
 std::optional<RenderFrame> SimulationThread::takeRenderFrame() {
     return frameSlot_.take();
 }
@@ -141,7 +145,7 @@ int SimulationThread::runFrame() {
     if (steps > 0 || !tasks.empty() || firstFrame) {
         ++framesPublished_;
         frameSlot_.publish(
-            RenderFrame{scene_, SimStatus{stepper_->tickIndex(), gameTime_.paused(),
+            RenderFrame{display_ ? *display_ : scene_, SimStatus{stepper_->tickIndex(), gameTime_.paused(),
                                           gameTime_.speedMultiplier(), stepper_->dropped(),
                                           framesPublished_, steps}});
     }
