@@ -30,9 +30,11 @@ struct RigidBody {
     glm::vec2 velocity{0.f, 0.f};
 };
 
-/** Axis-aligned collision extents. */
+/** Axis-aligned collision extents. The box starts offset from the Transform's position, so
+ *  it can fit the opaque part of a sprite with transparent padding. */
 struct Collider {
     glm::vec2 size{0.f, 0.f};
+    glm::vec2 offset{0.f, 0.f};
 };
 
 /** Visual size, color, and optional texture used when rendering an entity. */
@@ -41,6 +43,7 @@ struct Shape {
     Color color;
     std::optional<TextureId> texture; // nullopt = solid color; present = textured
     bool tiled = false;               // true = repeat texture across size instead of stretching
+    bool flipX = false;               // true = mirror the texture or sprite frame left to right
 };
 
 struct Text {

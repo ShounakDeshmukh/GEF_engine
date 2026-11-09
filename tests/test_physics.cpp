@@ -165,3 +165,40 @@ TEST_CASE("PhysicsSystem::GetCollisionOverlap is an empty rect when not overlapp
     REQUIRE(overlap.size.x == Catch::Approx(0.f));
     REQUIRE(overlap.size.y == Catch::Approx(0.f));
 }
+
+TEST_CASE("PhysicsSystem::isCollision places the collider at its offset", "[physics][collision]") {
+    engine::Scene scene;
+    const engine::EntityId a = scene.createEntity();
+    scene.addCollider(a, {.size = {32.f, 32.f}});
+
+    // b's Transform overlaps a, but its collider starts 40px right of it.
+    const engine::EntityId b = scene.createEntity();
+    scene.transform(b).position = {16.f, 0.f};
+    scene.addCollider(b, {.size = {32.f, 32.f}, .offset = {40.f, 0.f}});
+
+    engine::PhysicsSystem physics(0.f);
+    REQUIRE_FALSE(physics.isCollision(scene, a, b));
+
+    scene.transform(b).position = {-24.f, 0.f};
+    REQUIRE(physics.isCollision(scene, a, b));
+}
+
+TEST_CASE("PhysicsSystem offsets scale with the transform", "[physics][collision]") {
+    engine::Scene scene;
+    const engine::EntityId a = scene.createEntity();
+    scene.addCollider(a, {.size = {32.f, 32.f}});
+
+    const engine::EntityId b = scene.createEntity();
+    scene.transform(b).position = {0.f, 0.f};
+    scene.transform(b).scale = {2.f, 2.f};
+    scene.addCollider(b, {.size = {8.f, 8.f}, .offset = {12.f, 4.f}});
+
+    engine::PhysicsSystem physics(0.f);
+    const engine::Rect overlap = physics.GetCollisionOverlap(scene, a, b);
+
+    // b's box is 16x16 at (24, 8): 8x16 of it lies inside a.
+    REQUIRE(overlap.origin.x == Catch::Approx(24.f));
+    REQUIRE(overlap.origin.y == Catch::Approx(8.f));
+    REQUIRE(overlap.size.x == Catch::Approx(8.f));
+    REQUIRE(overlap.size.y == Catch::Approx(16.f));
+}

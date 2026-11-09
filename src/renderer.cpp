@@ -99,7 +99,7 @@ SpriteSheetId Renderer::createSpriteSheet(TextureId texture, SpriteSheetLayout l
 }
 
 void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled,
-                           std::optional<Rect> sourceRect) {
+                           std::optional<Rect> sourceRect, bool flipX) {
     SDL_Texture* handle = textures_.at(texture).get();
     const SDL_FRect rect{position.x, position.y, size.x, size.y};
     SDL_FRect srcRect{};
@@ -112,7 +112,8 @@ void Renderer::drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size
     if (tiled) {
         SDL_RenderTextureTiled(renderer_.get(), handle, src, 1.f, &rect);
     } else {
-        SDL_RenderTexture(renderer_.get(), handle, src, &rect);
+        SDL_RenderTextureRotated(renderer_.get(), handle, src, &rect, 0.0, nullptr,
+                                 flipX ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
     }
 }
 
@@ -125,9 +126,10 @@ void Renderer::drawEntities(const Scene& scene) {
         if (const SpriteAnimation* anim = scene.getSpriteAnimation(id)) {
             const SpriteSheetData& sheet = spriteSheets_.at(anim->sheet);
             const std::uint32_t frameIndex = anim->frames.at(anim->currentFrame).index;
-            drawTexture(sheet.texture, position, size, false, sheet.frames.at(frameIndex));
+            drawTexture(sheet.texture, position, size, false, sheet.frames.at(frameIndex),
+                        shape.flipX);
         } else if (shape.texture) {
-            drawTexture(*shape.texture, position, size, shape.tiled);
+            drawTexture(*shape.texture, position, size, shape.tiled, std::nullopt, shape.flipX);
         } else {
             fillRect(position, size, shape.color);
         }

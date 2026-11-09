@@ -74,9 +74,11 @@ public:
     /** Draws a texture at position (top-left corner). Stretched to fill
      *  size, or tiled across it if tiled is true. sourceRect, if set,
      *  draws only that sub-region of the texture instead of the whole
-     *  thing. Throws std::out_of_range if texture is not a valid id. */
+     *  thing. flipX mirrors it left to right; SDL can't flip a tiled draw, so
+     *  it is ignored when tiled. Throws std::out_of_range if texture is not a
+     *  valid id. */
     void drawTexture(TextureId texture, glm::vec2 position, glm::vec2 size, bool tiled = false,
-                     std::optional<Rect> sourceRect = std::nullopt);
+                     std::optional<Rect> sourceRect = std::nullopt, bool flipX = false);
     /** Draws every entity that has a Shape, positioned and scaled by its
      *  Transform. Uses the shape's texture if it has one, otherwise its
      *  color. */

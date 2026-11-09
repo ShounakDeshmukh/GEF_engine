@@ -52,9 +52,10 @@ int main() {
 
     const engine::EntityId walkerLeft = scene.createEntity();
     scene.transform(walkerLeft).position = {700.f, 800.f};
-    scene.addShape(walkerLeft, {.size = {64.f, 64.f}});
+    // The right-facing frames, mirrored.
+    scene.addShape(walkerLeft, {.size = {64.f, 64.f}, .flipX = true});
     scene.addSpriteAnimation(walkerLeft,
-                             engine::SpriteAnimation::uniform(walkerSheet, {4, 5, 6, 7}, 0.1f));
+                             engine::SpriteAnimation::uniform(walkerSheet, {0, 1, 2, 3}, 0.1f));
 
 
     const auto textEntity = scene.createEntity();

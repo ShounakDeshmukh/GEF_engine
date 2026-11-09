@@ -9,7 +9,7 @@
 namespace engine::networking {
 
     namespace {
-        constexpr std::uint8_t kFormatVersion = 1;
+        constexpr std::uint8_t kFormatVersion = 2;
 
         enum : std::uint8_t {
             kHasRigidBody = 1 << 0,
@@ -27,6 +27,7 @@ namespace engine::networking {
             glm::vec2 shapeSize{0.f, 0.f};
             Color shapeColor;
             std::uint8_t shapeTiled = 0;
+            std::uint8_t shapeFlipX = 0;
             Bytes extra;
         };
 
@@ -42,6 +43,7 @@ namespace engine::networking {
                 in.get(r.shapeSize);
                 in.get(r.shapeColor);
                 in.get(r.shapeTiled);
+                in.get(r.shapeFlipX);
             }
             if(r.mask & kHasExtra) {in.getBytes(r.extra);}
             return in.ok();
@@ -65,6 +67,7 @@ namespace engine::networking {
                     w.put(r.shapeSize);
                     w.put(r.shapeColor);
                     w.put(r.shapeTiled);
+                    w.put(r.shapeFlipX);
                 }
                 if(r.mask & kHasExtra) {w.putBytes(r.extra);}
             }
@@ -107,13 +110,18 @@ namespace engine::networking {
                     {"t", {{"p", toJson(r.transform.position)}, {"s", toJson(r.transform.scale)}}},
                 };
                 if(r.mask & kHasRigidBody) {e["rb"] = toJson(r.rigidBody.velocity);}
-                if(r.mask & kHasCollider) {e["c"] = toJson(r.collider.size);}
+                if(r.mask & kHasCollider)
+                {
+                    e["c"] = toJson(r.collider.size);
+                    e["co"] = toJson(r.collider.offset);
+                }
                 if(r.mask & kHasShape)
                 {
                     const Color& c = r.shapeColor;
                     e["sh"] = {{"s", toJson(r.shapeSize)},
                                {"c", {c.r, c.g, c.b, c.a}},
-                               {"t", r.shapeTiled != 0}};
+                               {"t", r.shapeTiled != 0},
+                               {"f", r.shapeFlipX != 0}};
                 }
                 if(r.mask & kHasExtra)
                 {
@@ -147,7 +155,11 @@ namespace engine::networking {
                     r.transform.position = vec2From(e.at("t").at("p"));
                     r.transform.scale = vec2From(e.at("t").at("s"));
                     if(r.mask & kHasRigidBody) {r.rigidBody.velocity = vec2From(e.at("rb"));}
-                    if(r.mask & kHasCollider) {r.collider.size = vec2From(e.at("c"));}
+                    if(r.mask & kHasCollider)
+                    {
+                        r.collider.size = vec2From(e.at("c"));
+                        r.collider.offset = vec2From(e.at("co"));
+                    }
                     if(r.mask & kHasShape)
                     {
                         const auto& sh = e.at("sh");
@@ -156,6 +168,7 @@ namespace engine::networking {
                         r.shapeColor = {c.at(0).get<std::uint8_t>(), c.at(1).get<std::uint8_t>(),
                                         c.at(2).get<std::uint8_t>(), c.at(3).get<std::uint8_t>()};
                         r.shapeTiled = sh.at("t").get<bool>() ? 1 : 0;
+                        r.shapeFlipX = sh.at("f").get<bool>() ? 1 : 0;
                     }
                     if(r.mask & kHasExtra)
                     {
@@ -249,6 +262,7 @@ namespace engine::networking {
                 r.shapeSize = shape->size;
                 r.shapeColor = shape->color;
                 r.shapeTiled = shape->tiled ? 1 : 0;
+                r.shapeFlipX = shape->flipX ? 1 : 0;
             }
             if(auto extra = extras_.find(id); extra != extras_.end())
             {
@@ -301,6 +315,7 @@ namespace engine::networking {
                 shape.size = r.shapeSize;
                 shape.color = r.shapeColor;
                 shape.tiled = r.shapeTiled != 0;
+                shape.flipX = r.shapeFlipX != 0;
                 if(const Shape* local = scene.getShape(entity)) {shape.texture = local->texture;}
                 scene.addShape(entity, shape);
             }
