@@ -25,10 +25,16 @@ Events, networked events, replay and input chords. Consuming repos should pin
   `kMaxPlaybackSpeed` (8x).
 - `SimulationThread::showScene` - publish a different Scene (e.g. a replay) in RenderFrames.
 - Examples: `event_replay_demo` and `networked_events_demo`.
+- `Collider::offset` - the collision box starts offset from the Transform, to fit a sprite's
+  opaque area.
+- `Shape::flipX` and a `flipX` argument on `Renderer::drawTexture` - mirror a texture or sprite
+  frame left to right (ignored for tiled draws).
 
 ### Changed
 
 - Message types from `0xFF00` up are reserved for the engine's common events.
+- Snapshot format version 2: snapshots carry the collider offset and `flipX`, so processes on
+  0.3.0 and 0.4.0 can't share a session.
 
 ## [0.3.0] - 2026-10-19
 
