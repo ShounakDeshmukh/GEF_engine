@@ -4,6 +4,32 @@ All notable changes to Deadlock are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/). Only `include/engine/` is covered by
 the version contract.
 
+## [0.4.0] - 2026-11-09
+
+Events, networked events, replay and input chords. Consuming repos should pin
+`GIT_TAG v0.4.0`.
+
+### Added
+
+- `engine::events::eventManager` - `subscribe<T>`, `raise(event, tick, priority)` and `run()`;
+  events are ordered by (tick, priority, raise order) on `gameTime` ticks, with
+  `maxEventsPerRun` capping each run. `simpleEvent` is the base of every event.
+- Networked events - types with `kType`, `encode()` and `decode()`; `receive()` queues decoded
+  messages as remote events. Accepting a type from the network is opt-in via
+  `subscribe<T>(handler, true)`.
+- Common events in `engine/events/commonEvents.hpp`: `inputEvent`, `inputChordEvent`,
+  `collisionEvent`, `deathEvent`, `spawnEvent` and the replay control events, plus
+  `raiseInputEvents()`, `raiseCollisions()` and `inputMapper` (chords via `addChord`).
+- `engine::replay::replayRecorder` and `replayController` - keyframe + delta recording of the
+  Scene in a rolling buffer, played back into a separate Scene at up to
+  `kMaxPlaybackSpeed` (8x).
+- `SimulationThread::showScene` - publish a different Scene (e.g. a replay) in RenderFrames.
+- Examples: `event_replay_demo` and `networked_events_demo`.
+
+### Changed
+
+- Message types from `0xFF00` up are reserved for the engine's common events.
+
 ## [0.3.0] - 2026-10-19
 
 Generic components, a camera, and a second snapshot format with a benchmark. Consuming repos
