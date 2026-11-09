@@ -5,6 +5,16 @@
 
 namespace engine {
 
+namespace {
+
+SDL_FRect boundsOf(const Transform& transform, const Collider& collider) {
+    const glm::vec2 at = transform.position + collider.offset * transform.scale;
+    const glm::vec2 size = collider.size * transform.scale;
+    return {at.x, at.y, size.x, size.y};
+}
+
+} // namespace
+
 PhysicsSystem::PhysicsSystem(float gravity) : gravity_(gravity) {}
 
 void PhysicsSystem::setGravity(float gravity) noexcept {
@@ -36,10 +46,8 @@ bool PhysicsSystem::isCollision(Scene& scene, EntityId entityID1, EntityId entit
         return false;
     }
 
-    const glm::vec2 e1Size = e1Collider->size * e1Pos.scale;
-    const glm::vec2 e2Size = e2Collider->size * e2Pos.scale;
-    SDL_FRect e1 = {e1Pos.position.x, e1Pos.position.y, e1Size.x, e1Size.y};
-    SDL_FRect e2 = {e2Pos.position.x, e2Pos.position.y, e2Size.x, e2Size.y};
+    const SDL_FRect e1 = boundsOf(e1Pos, *e1Collider);
+    const SDL_FRect e2 = boundsOf(e2Pos, *e2Collider);
 
     bool retVal = SDL_HasRectIntersectionFloat(&e1, &e2);
     return retVal;
@@ -57,10 +65,8 @@ Rect PhysicsSystem::GetCollisionOverlap(Scene& scene, EntityId entityID1, Entity
         return Rect{{0,0}, {0,0}};
     }
 
-    const glm::vec2 e1Size = e1Collider->size * e1Pos.scale;
-    const glm::vec2 e2Size = e2Collider->size * e2Pos.scale;
-    SDL_FRect e1 = {e1Pos.position.x, e1Pos.position.y, e1Size.x, e1Size.y};
-    SDL_FRect e2 = {e2Pos.position.x, e2Pos.position.y, e2Size.x, e2Size.y};
+    const SDL_FRect e1 = boundsOf(e1Pos, *e1Collider);
+    const SDL_FRect e2 = boundsOf(e2Pos, *e2Collider);
     SDL_FRect e3 = {0.0, 0.0, 0.0, 0.0};
 
     if (!SDL_GetRectIntersectionFloat(&e1, &e2, &e3)) {

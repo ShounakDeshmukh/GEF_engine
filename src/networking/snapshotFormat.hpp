@@ -16,7 +16,7 @@
 
 namespace engine::networking {
 
-    inline constexpr std::uint8_t kFormatVersion = 1;
+    inline constexpr std::uint8_t kFormatVersion = 2;
 
     enum : std::uint8_t {
         kHasRigidBody = 1 << 0,

@@ -37,7 +37,7 @@ TEST_CASE("sceneReplicator round-trips every replicated component", "[net][repli
     const EntityId source = a.createEntity();
     a.transform(source) = {{12.f, 34.f}, {2.f, 1.f}};
     a.addRigidBody(source, {{5.f, -6.f}});
-    a.addCollider(source, {{64.f, 32.f}});
+    a.addCollider(source, {{64.f, 32.f}, {8.f, 4.f}});
     engine::Shape shape;
     shape.size = {64.f, 32.f};
     shape.color = {1, 2, 3, 4};
@@ -55,6 +55,7 @@ TEST_CASE("sceneReplicator round-trips every replicated component", "[net][repli
     REQUIRE(b.transform(*copy).scale == a.transform(source).scale);
     REQUIRE(b.getRigidBody(*copy)->velocity == a.getRigidBody(source)->velocity);
     REQUIRE(b.getCollider(*copy)->size == a.getCollider(source)->size);
+    REQUIRE(b.getCollider(*copy)->offset == a.getCollider(source)->offset);
     const engine::Shape* copied = b.getShape(*copy);
     REQUIRE(copied->size == shape.size);
     REQUIRE(copied->color.r == 1);
@@ -191,12 +192,12 @@ TEST_CASE("sceneReplicator rejects malformed JSON without changing the scene",
     };
     const std::string net = std::to_string(id);
     const Bytes truncated(valid.begin(), valid.end() - 5);
-    const Bytes wrongVersion = toBytes(R"({"v":2,"e":[]})");
-    const Bytes missingKeys = toBytes(R"({"v":1,"e":[{"id":)" + net + "}]}");
+    const Bytes wrongVersion = toBytes(R"({"v":1,"e":[]})");
+    const Bytes missingKeys = toBytes(R"({"v":2,"e":[{"id":)" + net + "}]}");
     const Bytes maskWithoutKey =
-        toBytes(R"({"v":1,"e":[{"id":)" + net + R"(,"m":1,"t":{"p":[0,0],"s":[1,1]}}]})");
+        toBytes(R"({"v":2,"e":[{"id":)" + net + R"(,"m":1,"t":{"p":[0,0],"s":[1,1]}}]})");
     const Bytes extraOutOfRange =
-        toBytes(R"({"v":1,"e":[{"id":)" + net + R"(,"m":8,"t":{"p":[0,0],"s":[1,1]},"x":[300]}]})");
+        toBytes(R"({"v":2,"e":[{"id":)" + net + R"(,"m":8,"t":{"p":[0,0],"s":[1,1]},"x":[300]}]})");
 
     for (const Bytes& malformed :
          {truncated, wrongVersion, missingKeys, maskWithoutKey, extraOutOfRange}) {

@@ -9,7 +9,7 @@
 namespace engine::networking {
 
     namespace {
-        constexpr std::uint8_t kFormatVersion = 1;
+        constexpr std::uint8_t kFormatVersion = 2;
 
         enum : std::uint8_t {
             kHasRigidBody = 1 << 0,
@@ -107,7 +107,11 @@ namespace engine::networking {
                     {"t", {{"p", toJson(r.transform.position)}, {"s", toJson(r.transform.scale)}}},
                 };
                 if(r.mask & kHasRigidBody) {e["rb"] = toJson(r.rigidBody.velocity);}
-                if(r.mask & kHasCollider) {e["c"] = toJson(r.collider.size);}
+                if(r.mask & kHasCollider)
+                {
+                    e["c"] = toJson(r.collider.size);
+                    e["co"] = toJson(r.collider.offset);
+                }
                 if(r.mask & kHasShape)
                 {
                     const Color& c = r.shapeColor;
@@ -147,7 +151,11 @@ namespace engine::networking {
                     r.transform.position = vec2From(e.at("t").at("p"));
                     r.transform.scale = vec2From(e.at("t").at("s"));
                     if(r.mask & kHasRigidBody) {r.rigidBody.velocity = vec2From(e.at("rb"));}
-                    if(r.mask & kHasCollider) {r.collider.size = vec2From(e.at("c"));}
+                    if(r.mask & kHasCollider)
+                    {
+                        r.collider.size = vec2From(e.at("c"));
+                        r.collider.offset = vec2From(e.at("co"));
+                    }
                     if(r.mask & kHasShape)
                     {
                         const auto& sh = e.at("sh");
