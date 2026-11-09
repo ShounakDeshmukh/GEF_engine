@@ -34,6 +34,7 @@ namespace engine::networking {
         glm::vec2 shapeSize{0.f, 0.f};
         Color shapeColor;
         std::uint8_t shapeTiled = 0;
+        std::uint8_t shapeFlipX = 0;
         Bytes extra;
     };
 
@@ -49,6 +50,7 @@ namespace engine::networking {
             in.get(r.shapeSize);
             in.get(r.shapeColor);
             in.get(r.shapeTiled);
+            in.get(r.shapeFlipX);
         }
         if(r.mask & kHasExtra) {in.getBytes(r.extra);}
         return in.ok();

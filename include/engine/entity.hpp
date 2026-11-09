@@ -43,6 +43,7 @@ struct Shape {
     Color color;
     std::optional<TextureId> texture; // nullopt = solid color; present = textured
     bool tiled = false;               // true = repeat texture across size instead of stretching
+    bool flipX = false;               // true = mirror the texture or sprite frame left to right
 };
 
 struct Text {

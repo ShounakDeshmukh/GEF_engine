@@ -42,6 +42,7 @@ TEST_CASE("sceneReplicator round-trips every replicated component", "[net][repli
     shape.size = {64.f, 32.f};
     shape.color = {1, 2, 3, 4};
     shape.tiled = true;
+    shape.flipX = true;
     a.addShape(source, shape);
     const auto id = server.track(source);
     const Bytes sentExtra{std::byte{7}, std::byte{255}};
@@ -63,6 +64,7 @@ TEST_CASE("sceneReplicator round-trips every replicated component", "[net][repli
     REQUIRE(copied->color.b == 3);
     REQUIRE(copied->color.a == 4);
     REQUIRE(copied->tiled);
+    REQUIRE(copied->flipX);
     const Bytes* extra = client.extraOf(id);
     REQUIRE(extra != nullptr);
     REQUIRE((*extra == sentExtra)); // parenthesized: Catch2 cannot print std::byte
