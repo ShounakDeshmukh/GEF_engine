@@ -1,14 +1,15 @@
 #include "engine/entity.hpp"
 
+#include <cstddef>
 #include <stdexcept>
-#include <unordered_map>
 #include <utility>
 
 namespace engine {
 
 EntityId Scene::createEntity() {
-    const EntityId id = nextId_++;
-    transforms_.try_emplace(id);
+    const EntityId id = nextId_;
+    transforms_.try_emplace(id); // throws first if the entity pool is full
+    ++nextId_;
     return id;
 }
 
@@ -21,6 +22,13 @@ void Scene::destroyEntity(EntityId id) noexcept {
 
 bool Scene::hasEntity(EntityId id) const noexcept {
     return transforms_.contains(id);
+}
+
+void Scene::reserveEntities(std::size_t capacity) {
+    if (!transforms_.empty()) {
+        throw std::logic_error("Scene::reserveEntities: the Scene already has entities");
+    }
+    transforms_ = componentTable<Transform>(capacity);
 }
 
 Transform& Scene::transform(EntityId id) {
@@ -119,27 +127,27 @@ const Text* Scene::getText(EntityId id) const noexcept {
     return get<Text>(id);
 }
 
-const std::unordered_map<EntityId, Transform>& Scene::transforms() const noexcept {
+const componentTable<Transform>& Scene::transforms() const noexcept {
     return transforms_;
 }
 
-std::unordered_map<EntityId, RigidBody>& Scene::rigidBodies() noexcept {
+componentTable<RigidBody>& Scene::rigidBodies() noexcept {
     return all<RigidBody>();
 }
 
-const std::unordered_map<EntityId, Collider>& Scene::colliders() const noexcept {
+const componentTable<Collider>& Scene::colliders() const noexcept {
     return all<Collider>();
 }
 
-const std::unordered_map<EntityId, Shape>& Scene::shapes() const noexcept {
+const componentTable<Shape>& Scene::shapes() const noexcept {
     return all<Shape>();
 }
 
-std::unordered_map<EntityId, SpriteAnimation>& Scene::spriteAnimations() noexcept {
+componentTable<SpriteAnimation>& Scene::spriteAnimations() noexcept {
     return all<SpriteAnimation>();
 }
 
-const std::unordered_map<EntityId, Text>& Scene::texts() const noexcept {
+const componentTable<Text>& Scene::texts() const noexcept {
     return all<Text>();
 }
 

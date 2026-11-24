@@ -278,3 +278,232 @@ TEST_CASE("Named accessors share the generic storage", "[scene][components]") {
     REQUIRE(scene.get<engine::Shape>(id) == scene.getShape(id));
     REQUIRE(scene.colliders().size() == 1);
 }
+
+TEST_CASE("Scene::reservePool caps a component type", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reservePool<Health>(2);
+    REQUIRE(scene.all<Health>().pooled());
+    REQUIRE(scene.all<Health>().capacity() == 2);
+
+    const engine::EntityId a = scene.createEntity();
+    const engine::EntityId b = scene.createEntity();
+    const engine::EntityId c = scene.createEntity();
+    scene.add<Health>(a, {1});
+    scene.add<Health>(b, {2});
+    REQUIRE_THROWS_AS(scene.add<Health>(c, {3}), std::length_error);
+    REQUIRE_FALSE(scene.has<Health>(c));
+
+    scene.add<Health>(a, {5}); // overwriting an existing one needs no new slot
+    REQUIRE(scene.get<Health>(a)->hp == 5);
+
+    scene.destroyEntity(b);
+    REQUIRE(scene.add<Health>(c, {3}).hp == 3);
+}
+
+TEST_CASE("Scene::reservePool works for the built-in components", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reservePool<engine::RigidBody>(1);
+    const engine::EntityId a = scene.createEntity();
+    const engine::EntityId b = scene.createEntity();
+
+    scene.addRigidBody(a);
+    REQUIRE(scene.rigidBodies().pooled());
+    REQUIRE_THROWS_AS(scene.addRigidBody(b), std::length_error);
+}
+
+TEST_CASE("Scene::reservePool refuses a type that already has components", "[scene][pool]") {
+    engine::Scene scene;
+    const engine::EntityId id = scene.createEntity();
+    scene.add<Health>(id);
+    REQUIRE_THROWS_AS(scene.reservePool<Health>(4), std::logic_error);
+
+    scene.remove<Health>(id);
+    REQUIRE_NOTHROW(scene.reservePool<Health>(4));
+    REQUIRE(scene.all<Health>().capacity() == 4);
+}
+
+TEST_CASE("Scene::reserveEntities caps the number of live entities", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reserveEntities(2);
+    REQUIRE(scene.transforms().pooled());
+
+    const engine::EntityId a = scene.createEntity();
+    const engine::EntityId b = scene.createEntity();
+    REQUIRE_THROWS_AS(scene.createEntity(), std::length_error);
+
+    scene.destroyEntity(a);
+    const engine::EntityId c = scene.createEntity();
+    REQUIRE(scene.hasEntity(b));
+    REQUIRE(scene.hasEntity(c));
+    REQUIRE(c == b + 1); // the failed create didn't use up an id
+}
+
+TEST_CASE("Scene::reserveEntities refuses a Scene that has entities", "[scene][pool]") {
+    engine::Scene scene;
+    scene.createEntity();
+    REQUIRE_THROWS_AS(scene.reserveEntities(4), std::logic_error);
+}
+
+TEST_CASE("Scene copies get their own pools of the same size", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reserveEntities(8);
+    scene.reservePool<Health>(4);
+    const engine::EntityId id = scene.createEntity();
+    scene.add<Health>(id, {5});
+
+    engine::Scene copy = scene;
+    REQUIRE(copy.transforms().pooled());
+    REQUIRE(copy.transforms().capacity() == 8);
+    REQUIRE(copy.all<Health>().capacity() == 4);
+    REQUIRE(copy.get<Health>(id) != scene.get<Health>(id));
+
+    copy.get<Health>(id)->hp = 9;
+    REQUIRE(scene.get<Health>(id)->hp == 5);
+}
+
+TEST_CASE("Scene moves keep pooled components in place", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reservePool<Health>(4);
+    const engine::EntityId id = scene.createEntity();
+    Health* health = &scene.add<Health>(id, {5});
+
+    engine::Scene moved = std::move(scene);
+    REQUIRE(moved.get<Health>(id) == health);
+
+    std::vector<engine::EntityId> visited;
+    moved.each<Health>([&](engine::EntityId e, Health&) { visited.push_back(e); });
+    REQUIRE(visited == std::vector{id});
+}
+
+TEST_CASE("Scene::reservePool accepts a type whose store exists but is empty", "[scene][pool]") {
+    engine::Scene scene;
+    REQUIRE(scene.all<Health>().empty()); // creates an empty heap store
+    REQUIRE_FALSE(scene.all<Health>().pooled());
+
+    scene.reservePool<Health>(3);
+    REQUIRE(scene.all<Health>().pooled());
+    REQUIRE(scene.all<Health>().capacity() == 3);
+}
+
+TEST_CASE("Scene::remove<T> gives the slot back to T's pool", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reservePool<Health>(1);
+    const engine::EntityId a = scene.createEntity();
+    const engine::EntityId b = scene.createEntity();
+
+    scene.add<Health>(a, {1});
+    REQUIRE(scene.all<Health>().full());
+    scene.remove<Health>(a);
+    REQUIRE_FALSE(scene.all<Health>().full());
+    REQUIRE(scene.add<Health>(b, {2}).hp == 2);
+}
+
+TEST_CASE("Scene::destroyEntity frees the entity's slot in every pool", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reserveEntities(1);
+    scene.reservePool<Health>(1);
+    scene.reservePool<engine::Shape>(1);
+
+    const engine::EntityId first = scene.createEntity();
+    scene.add<Health>(first);
+    scene.addShape(first, engine::Shape{});
+    scene.destroyEntity(first);
+
+    REQUIRE(scene.transforms().empty());
+    REQUIRE(scene.all<Health>().empty());
+    REQUIRE(scene.shapes().empty());
+
+    const engine::EntityId second = scene.createEntity();
+    REQUIRE_NOTHROW(scene.add<Health>(second));
+    REQUIRE_NOTHROW(scene.addShape(second, engine::Shape{}));
+}
+
+TEST_CASE("Pooled and heap components mix in one Scene", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reservePool<Health>(4); // Tag stays on the heap
+    const engine::EntityId both = scene.createEntity();
+    const engine::EntityId healthOnly = scene.createEntity();
+    scene.add<Health>(both, {1});
+    scene.add<Tag>(both);
+    scene.add<Health>(healthOnly, {2});
+
+    REQUIRE(scene.all<Health>().pooled());
+    REQUIRE_FALSE(scene.all<Tag>().pooled());
+
+    std::vector<engine::EntityId> visited;
+    scene.each<Tag, Health>([&](engine::EntityId id, Tag&, Health& h) {
+        visited.push_back(id);
+        h.hp += 10;
+    });
+    REQUIRE(visited == std::vector{both});
+    REQUIRE(scene.get<Health>(both)->hp == 11);
+    REQUIRE(scene.get<Health>(healthOnly)->hp == 2);
+}
+
+TEST_CASE("A copy of a full pooled Scene is full too", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reserveEntities(2);
+    scene.createEntity();
+    scene.createEntity();
+
+    engine::Scene copy = scene;
+    REQUIRE_THROWS_AS(copy.createEntity(), std::length_error);
+
+    // Freeing a slot in the copy doesn't free one in the original.
+    copy.destroyEntity(copy.transforms().begin()->first);
+    REQUIRE_NOTHROW(copy.createEntity());
+    REQUIRE_THROWS_AS(scene.createEntity(), std::length_error);
+}
+
+TEST_CASE("Scene copy-assignment takes the source's pools", "[scene][pool]") {
+    engine::Scene pooled;
+    pooled.reserveEntities(4);
+    pooled.reservePool<Health>(2);
+    const engine::EntityId id = pooled.createEntity();
+    pooled.add<Health>(id, {7});
+
+    engine::Scene target;
+    target.createEntity();
+    target = pooled;
+
+    REQUIRE(target.transforms().pooled());
+    REQUIRE(target.transforms().capacity() == 4);
+    REQUIRE(target.all<Health>().capacity() == 2);
+    REQUIRE(target.get<Health>(id)->hp == 7);
+    REQUIRE(target.transforms().size() == 1);
+}
+
+TEST_CASE("Pooled Transforms keep their address while other entities come and go",
+          "[scene][pool]") {
+    engine::Scene scene;
+    scene.reserveEntities(64);
+    const engine::EntityId keeper = scene.createEntity();
+    engine::Transform* kept = &scene.transform(keeper);
+    kept->position = {3.f, 4.f};
+
+    std::vector<engine::EntityId> others;
+    for (int i = 0; i < 63; ++i) {
+        others.push_back(scene.createEntity());
+    }
+    for (engine::EntityId e : others) {
+        scene.destroyEntity(e);
+    }
+    for (int i = 0; i < 63; ++i) {
+        scene.createEntity();
+    }
+
+    REQUIRE(&scene.transform(keeper) == kept);
+    REQUIRE(kept->position == glm::vec2{3.f, 4.f});
+}
+
+TEST_CASE("advanceAnimations runs on pooled SpriteAnimations", "[scene][pool]") {
+    engine::Scene scene;
+    scene.reservePool<engine::SpriteAnimation>(2);
+    const engine::EntityId id = scene.createEntity();
+    scene.addSpriteAnimation(id, engine::SpriteAnimation::uniform(0, {0, 1, 2}, 0.1f));
+
+    engine::advanceAnimations(scene, 0.15f);
+
+    REQUIRE(scene.spriteAnimations().pooled());
+    REQUIRE(scene.getSpriteAnimation(id)->currentFrame == 1);
+}

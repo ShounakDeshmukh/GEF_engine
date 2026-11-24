@@ -5,11 +5,14 @@
  */
 
 #include "engine/animation.hpp"
+#include "engine/componentTable.hpp"
 #include "engine/entity.hpp"
 #include "engine/ids.hpp"
 #include "engine/inputHandler.hpp"
 #include "engine/keyboardState.hpp"
 #include "engine/log.hpp"
+#include "engine/memory/objectAllocator.hpp"
+#include "engine/memory/poolAllocator.hpp"
 #include "engine/physics.hpp"
 #include "engine/renderer.hpp"
 #include "engine/simulationThread.hpp"
