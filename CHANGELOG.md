@@ -4,6 +4,28 @@ All notable changes to Deadlock are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/). Only `include/engine/` is covered by
 the version contract.
 
+## [Unreleased]
+
+### Added
+
+- `engine::memory::poolAllocator<T>` - a fixed-capacity pool that reserves memory for `n`
+  objects up front; `create()` / `destroy()` run in constant time through a free list.
+- `engine::memory::objectAllocator<T>` - one wrapper for heap (`new`/`delete`) or pool
+  allocation, chosen at construction, so code that uses it works the same in both modes.
+- `Scene::reservePool<T>(n)` and `Scene::reserveEntities(n)` - back a component type, or the
+  entities' Transforms, with a pool of `n`. Adding past the limit throws `std::length_error`.
+  The default stays heap allocation, so existing games are unaffected.
+- `engine::componentTable<T>` - the storage behind each component type.
+
+### Changed
+
+- `Scene::all<T>()`, `transforms()`, `rigidBodies()`, `colliders()`, `shapes()`,
+  `spriteAnimations()` and `texts()` return `componentTable<T>&` instead of
+  `std::unordered_map<EntityId, T>&`. It iterates, finds and erases the same way, so range-for
+  loops with structured bindings and `.size()` keep compiling; only code that names the
+  `std::unordered_map` type needs updating.
+- Copying a Scene gives the copy its own pools of the same capacities.
+
 ## [0.4.0] - 2026-11-09
 
 Events, networked events, replay and input chords. Consuming repos should pin

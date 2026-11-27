@@ -1,10 +1,12 @@
 #pragma once
 
 #include "engine/animation.hpp"
+#include "engine/componentTable.hpp"
 #include "engine/renderer.hpp"
 #include "engine/renderTypes.hpp"
 
 #include <any>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <glm/vec2.hpp>
@@ -56,17 +58,39 @@ struct Text {
  *  copy-constructible type is a component (add<T>, get<T>, each<T...>), and the named
  *  accessors (addShape, getCollider, ...) are shorthands for the same storage.
  *
+ *  Each component type, and the entities' Transforms, live in a componentTable. By default
+ *  a table allocates its entries on the heap; reservePool<T>(n) and reserveEntities(n) switch
+ *  it to a fixed pool with memory for n reserved up front. A copied Scene gets its own pools
+ *  of the same capacities.
+ *
  *  @thread_safety Not thread-safe. */
 class Scene {
 public:
     /** Creates a new entity with a default Transform and no other
-     *  components. Returns its id. */
+     *  components. Returns its id. Throws std::length_error if reserveEntities() set a
+     *  limit and that many entities are live. */
     EntityId createEntity();
     /** Destroys an entity and all of its components. A no-op if id does
      *  not refer to a live entity. */
     void destroyEntity(EntityId id) noexcept;
     /** True if id refers to a live entity. */
     bool hasEntity(EntityId id) const noexcept;
+
+    /** Pools the entities' Transforms: reserves memory for capacity entities now, and
+     *  createEntity() throws std::length_error once that many are live. Throws
+     *  std::logic_error if the Scene already has entities. */
+    void reserveEntities(std::size_t capacity);
+
+    /** Pools component T: reserves memory for capacity Ts now, and add<T> throws
+     *  std::length_error once that many are attached. Call it before the first add<T>;
+     *  throws std::logic_error if any entity already has a T. */
+    template <typename T> void reservePool(std::size_t capacity) {
+        componentMap<T>& store = ensureStore<T>();
+        if (!store.empty()) {
+            throw std::logic_error("Scene::reservePool: the component type already has entries");
+        }
+        store = componentMap<T>(capacity);
+    }
 
     /** The entity's transform. Throws std::out_of_range if id does not
      *  refer to a live entity. */
@@ -126,20 +150,20 @@ public:
 
 
     /** All live entities' transforms. */
-    const std::unordered_map<EntityId, Transform>& transforms() const noexcept;
+    const componentTable<Transform>& transforms() const noexcept;
     /** All RigidBodies, mutable. */
-    std::unordered_map<EntityId, RigidBody>& rigidBodies() noexcept;
+    componentTable<RigidBody>& rigidBodies() noexcept;
     /** All Colliders. */
-    const std::unordered_map<EntityId, Collider>& colliders() const noexcept;
+    const componentTable<Collider>& colliders() const noexcept;
     /** All Shapes. */
-    const std::unordered_map<EntityId, Shape>& shapes() const noexcept;
+    const componentTable<Shape>& shapes() const noexcept;
     /** All SpriteAnimations, mutable. */
-    std::unordered_map<EntityId, SpriteAnimation>& spriteAnimations() noexcept;
+    componentTable<SpriteAnimation>& spriteAnimations() noexcept;
     /** All Text Components */
-    const std::unordered_map<EntityId, Text>& texts() const noexcept;
+    const componentTable<Text>& texts() const noexcept;
 
     /** Attaches (or overwrites) a T on id. Throws std::out_of_range if id does not
-     *  refer to a live entity. */
+     *  refer to a live entity, or std::length_error if T is pooled and the pool is full. */
     template <typename T> T& add(EntityId id, T value = {}) {
         if (!hasEntity(id)) {
             throw std::out_of_range("Scene::add: unknown EntityId");
@@ -169,10 +193,10 @@ public:
 
     template <typename T> bool has(EntityId id) const noexcept { return get<T>(id) != nullptr; }
 
-    /** Every T, keyed by entity. */
-    template <typename T> std::unordered_map<EntityId, T>& all() { return ensureStore<T>(); }
-    template <typename T> const std::unordered_map<EntityId, T>& all() const {
-        static const std::unordered_map<EntityId, T> empty;
+    /** Every T, keyed by entity. capacity() and pooled() on the result describe T's pool. */
+    template <typename T> componentTable<T>& all() { return ensureStore<T>(); }
+    template <typename T> const componentTable<T>& all() const {
+        static const componentTable<T> empty;
         const auto* store = storeOf<T>();
         return store ? *store : empty;
     }
@@ -188,7 +212,7 @@ public:
     }
 
 private:
-    template <typename T> using componentMap = std::unordered_map<EntityId, T>;
+    template <typename T> using componentMap = componentTable<T>;
 
     /** One component type's map, type-erased; std::any keeps Scene copyable. */
     struct componentStore {
@@ -220,7 +244,7 @@ private:
     }
 
     EntityId nextId_ = 1;
-    std::unordered_map<EntityId, Transform> transforms_;
+    componentTable<Transform> transforms_;
     std::unordered_map<std::type_index, componentStore> stores_;
 };
 

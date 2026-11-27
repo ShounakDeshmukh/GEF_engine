@@ -34,3 +34,6 @@ add_executable(event_replay_demo event_replay_demo/main.cpp)
 target_link_libraries(event_replay_demo PRIVATE engine)
 
 add_subdirectory(networked_events_demo)
+
+add_executable(pool_demo pool_demo/main.cpp)
+target_link_libraries(pool_demo PRIVATE engine)
